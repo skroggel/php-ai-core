@@ -19,14 +19,15 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
 
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Action;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class LinkList
+ * Class SelectList
  *
- * Provides the default prompt-triggering link list definition.
+ * Provides the default single-selection component definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -34,27 +35,28 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class LinkList
+final class SelectList
 {
     /**
      * Returns the default definition.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition Component definition.
      */
     public static function definition(): Definition
     {
         return new Definition(
-            'link-list',
-            'Displays options that trigger a configured prompt when selected.',
-            '<nav class="ai-link-list" aria-label="Options"><ul>{{#options}}<li><a href="{{url}}" target="_blank" rel="noopener noreferrer">{{label}}</a></li>{{/options}}</ul></nav>',
-            [],
+            'select-list',
+            'Displays one selectable option from a list. Supply variable content only through its declared data fields. Options may contain an icon name. ',
+            '<div class="ai-select-list">{{#options}}<button type="button" data-ai-action="select" data-ai-value="{{value}}"><span data-icon="{{icon}}">{{label}}</span></button>{{/options}}</div>',
+            [new Action('select', 'Show me information about {{label}}.', ['label', 'value'])],
             [
                 'options' => ['type' => 'array'],
                 'options[].label' => ['type' => 'string'],
-                'options[].url' => ['type' => 'string'],
+                'options[].value' => ['type' => 'string'],
+                'options[].icon' => ['type' => 'string'],
             ],
-            ['options', 'label', 'url'],
-            'ai-ui-link-list',
+            ['options', 'label', 'value', 'icon'],
+            'ai-ui-select-list',
         );
     }
 }

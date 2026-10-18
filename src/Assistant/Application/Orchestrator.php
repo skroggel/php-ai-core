@@ -29,6 +29,7 @@ use Madj2k\AiCore\Assistant\DTO\DirectInteraction;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
 use Madj2k\AiCore\Assistant\Memory\MemoryInterface;
 use Madj2k\AiCore\Assistant\Pipeline\Pipeline;
+use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
 use Madj2k\AiCore\Exception\AssistantException;
 use Madj2k\AiCore\Connection\Ai\DTO\AiMessage;
 use Madj2k\AiCore\Connection\Ai\DTO\AiRequest;
@@ -388,16 +389,17 @@ final readonly class Orchestrator
         DirectInteraction $interaction,
         string $query,
     ): array {
-        $systemParts = [trim($interaction->instruction)];
+        $formatter = new Formatter();
+        $systemParts = [$formatter->boundary('Direct Interaction', $interaction->instruction)];
         $chatOptions = $assistantRequest->chatOptions;
 
         if ($chatOptions->responseLanguage !== '') {
-            $systemParts[] = 'Respond in this language: ' . $chatOptions->responseLanguage . '.';
+            $systemParts[] = $formatter->boundary('Response Language', 'Respond in this language: ' . $chatOptions->responseLanguage . '.');
         }
         if ($chatOptions->plainLanguage) {
-            $systemParts[] = 'Use plain language with familiar words and short sentences.';
+            $systemParts[] = $formatter->boundary('Accessibility Requirements', 'Use plain language with familiar words and short sentences.');
         }
-        $systemParts[] = 'Return plain text only. Do not use Markdown.';
+        $systemParts[] = $formatter->boundary('Output Requirements', 'Return plain text only. Do not use Markdown.');
 
         return [
             new AiMessage('system', implode("\n\n", array_filter($systemParts))),

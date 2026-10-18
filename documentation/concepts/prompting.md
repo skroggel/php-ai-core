@@ -27,17 +27,17 @@ AI connector.
 The system prompt may include assistant-level sections depending on step
 configuration:
 
-- `[Assistant Identity]`
-- `[Assistant Behavior Rules]`
-- `[Assistant Retrieval Rules]`
-- `[Assistant Output Rules]`
+- `===== BEGIN Assistant Identity =====` / matching `END`
+- `===== BEGIN Assistant Behavior Rules =====` / matching `END`
+- `===== BEGIN Assistant Retrieval Rules =====` / matching `END`
+- `===== BEGIN Assistant Output Rules =====` / matching `END`
 
 It can also include step-specific sections:
 
-- `[Step Identity]`
-- `[Step Behavior Rules]`
-- `[Step Retrieval Rules]`
-- `[Step Output Rules]`
+- `===== BEGIN Step Identity =====` / matching `END`
+- `===== BEGIN Step Behavior Rules =====` / matching `END`
+- `===== BEGIN Step Retrieval Rules =====` / matching `END`
+- `===== BEGIN Step Output Rules =====` / matching `END`
 
 For `AnswerGenerator` and `QualityGate`, runtime chat options can add
 explicit response-language and plain-language instructions.
@@ -54,9 +54,10 @@ History is controlled per pipeline step through `HistoryMode`.
 and serializes messages as:
 
 ```
-[Chat History]
+===== BEGIN Chat History =====
 user: ...
 assistant: ...
+===== END Chat History =====
 ```
 
 ## Dynamic context builders
@@ -83,11 +84,23 @@ Built-in builders include:
 
 A custom builder can add new context without modifying `PromptBuilder`.
 
+`Formatter` emits every `PromptSection` with plain-text boundaries. Nested
+entries use five-dash boundaries, for example:
+
+```
+----- BEGIN PRESENTATION RULE: answer_topic -----
+Instructions...
+----- END PRESENTATION RULE: answer_topic -----
+```
+
+The same format is used for UI component definitions and retrieval groups.
+No HTML or XML marker syntax is used for prompt boundaries.
+
 ## Retrieval attribution
 
 When `ContextOptimizerProcessor` runs with retrieval groups, it adds a
-system instruction requiring `[Retrieval: ...]` identifiers and
-attribution boundaries to be preserved.
+system instruction requiring retrieval identifiers and attribution
+boundaries to be preserved.
 
 `RetrievalContextBuilder` constructs grouped retrieval sections and
 applies per-group/global context limits. When multiple retrieval groups

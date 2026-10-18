@@ -19,15 +19,14 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
 
-use Madj2k\AiCore\Assistant\UIComponents\Action;
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class SelectList
+ * Class Decorative
  *
- * Provides the default single-selection component definition.
+ * Provides the default non-interactive separator definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -35,28 +34,23 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class SelectList
+final class Decorative
 {
     /**
      * Returns the default definition.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition Component definition.
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition
      */
     public static function definition(): Definition
     {
         return new Definition(
-            'select-list',
-            'Displays one selectable option from a list. Options may contain an icon name.',
-            '<div class="ai-select-list">{{#options}}<button type="button" data-ai-action="select" data-ai-value="{{value}}"><span data-icon="{{icon}}">{{label}}</span></button>{{/options}}</div>',
-            [new Action('select', 'Show me information about {{label}}.', ['label', 'value'])],
-            [
-                'options' => ['type' => 'array'],
-                'options[].label' => ['type' => 'string'],
-                'options[].value' => ['type' => 'string'],
-                'options[].icon' => ['type' => 'string'],
-            ],
-            ['options', 'label', 'value', 'icon'],
-            'ai-ui-select-list',
+            'decorative',
+            'Displays a decorative separator without interaction. Supply variable content only through its declared data fields.',
+            '<hr class="ai-decorative-separator">',
+            [],
+            [],
+            [],
+            'ai-ui-decorative',
         );
     }
 }

@@ -27,6 +27,7 @@ use Madj2k\AiCore\Assistant\Context\Request\History;
 use Madj2k\AiCore\Assistant\Context\Request\Request;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalResult;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalPlan;
+use Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan;
 use Madj2k\AiCore\Assistant\Context\Trace\ProcessingTrace;
 
 /**
@@ -72,12 +73,21 @@ final class Context
      */
     protected RetrievalResult $retrieval;
 
+
     /**
      * Runtime retrieval selection plan.
      *
      * @var \Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalPlan
      */
     protected RetrievalPlan $retrievalPlan;
+
+
+    /**
+     * Runtime presentationRule selection plan.
+     *
+     * @var \Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan
+     */
+    protected PresentationRulePlan $presentationRulePlan;
 
 
     /**
@@ -127,6 +137,7 @@ final class Context
         $this->history = $history;
         $this->retrieval = $retrieval;
         $this->retrievalPlan = new RetrievalPlan();
+        $this->presentationRulePlan = new PresentationRulePlan();
         $this->answer = $answer;
         $this->currentQuery = $request->getQuery();
         $this->processingTrace = $processingTrace;
@@ -247,6 +258,29 @@ final class Context
     public function setRetrievalPlan(RetrievalPlan $retrievalPlan): void
     {
         $this->retrievalPlan = $retrievalPlan;
+    }
+
+
+    /**
+     * Gets the presentationRule selection plan.
+     *
+     * @return \Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan
+     */
+    public function getPresentationRulePlan(): PresentationRulePlan
+    {
+        return $this->presentationRulePlan;
+    }
+
+
+    /**
+     * Sets the presentationRule selection plan.
+     *
+     * @param \Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan $presentationRulePlan
+     * @return void
+     */
+    public function setPresentationRulePlan(PresentationRulePlan $presentationRulePlan): void
+    {
+        $this->presentationRulePlan = $presentationRulePlan;
     }
 
 

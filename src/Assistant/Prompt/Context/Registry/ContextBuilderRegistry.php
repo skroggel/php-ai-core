@@ -25,6 +25,9 @@ use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\Builder\ContextBuilderInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
+use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
+use Madj2k\AiCore\Assistant\DTO\PromptRole;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 
 /**
  * Class ContextBuilderRegistry
@@ -36,7 +39,7 @@ use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class ContextBuilderRegistry
+final readonly class ContextBuilderRegistry
 {
     /**
      * Constructor.
@@ -44,7 +47,7 @@ final class ContextBuilderRegistry
      * @param iterable<\Madj2k\AiCore\Assistant\Prompt\Context\Builder\ContextBuilderInterface> $builders Context builders.
      */
     public function __construct(
-        private readonly iterable $builders
+        private iterable $builders
     ) {
     }
 
@@ -54,14 +57,27 @@ final class ContextBuilderRegistry
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current chat context.
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptRole|null $role
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
      * @return array<int, \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection> Prompt sections.
      */
-    public function buildSections(Context $context, PipelineStepConfigurationInterface $step): array
+    public function buildSections(
+        Context $context,
+        PipelineStepConfigurationInterface $step,
+        ?PromptRole $role = null,
+        ?PromptType $promptType = null,
+    ): array
     {
         $sections = [];
-
         foreach ($this->builders as $builder) {
             if (!$builder instanceof ContextBuilderInterface || !$builder->supports($step->getType())) {
+                continue;
+            }
+
+            if ($role !== null && $builder->getPromptRole() !== $role) {
+                continue;
+            }
+            if ($promptType !== null && $builder->getPromptType() !== $promptType) {
                 continue;
             }
 
@@ -74,9 +90,74 @@ final class ContextBuilderRegistry
 
         usort(
             $sections,
-            static fn (PromptSection $left, PromptSection $right): int => $left->priority <=> $right->priority
+            static fn (PromptSection $left, PromptSection $right): int
+                => ($left->priority ?? 100) <=> ($right->priority ?? 100)
         );
 
         return $sections;
+    }
+
+    /**
+     * Build all system-prompt sections
+     *
+     * @param \Madj2k\AiCore\Assistant\Context\Context $context
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @return \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection[]
+     */
+    public function buildSystemSections(
+        Context $context,
+        PipelineStepConfigurationInterface $step,
+        ?PromptType $promptType = null,
+    ): array
+    {
+        return $this->buildSections($context, $step, PromptRole::System, $promptType);
+    }
+
+    /**
+     * Build all user-prompt sections
+     *
+     * @param \Madj2k\AiCore\Assistant\Context\Context $context
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @return \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection[]
+     */
+    public function buildUserSections(
+        Context $context,
+        PipelineStepConfigurationInterface $step,
+        ?PromptType $promptType = null,
+    ): array
+    {
+        return $this->buildSections($context, $step, PromptRole::User, $promptType);
+    }
+
+
+     /**
+      * Returns static instructions without building runtime context sections.
+      *
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @return array<int, string> General instructions.
+     */
+     public function getGeneralInstructions(
+         AssistantPipelineProcessorType $type,
+         ?PromptType $promptType = null,
+     ): array
+    {
+        $instructions = [];
+        foreach ($this->builders as $builder) {
+            if (!$builder instanceof ContextBuilderInterface || !$builder->supports($type)) {
+                continue;
+            }
+            if ($promptType !== null && $builder->getPromptType() !== $promptType) {
+                continue;
+            }
+            foreach ($builder->getGeneralInstructions($type) as $instruction) {
+                if ($instruction !== '') {
+                    $instructions[] = $instruction;
+                }
+            }
+        }
+
+        return array_values(array_unique($instructions));
     }
 }

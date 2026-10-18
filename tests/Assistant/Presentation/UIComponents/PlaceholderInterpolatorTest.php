@@ -19,15 +19,15 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Tests\Assistant\UIComponents;
+namespace Madj2k\AiCore\Tests\Assistant\Presentation\UIComponents;
 
-use Madj2k\AiCore\Assistant\UIComponents\BlockParser;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\PlaceholderInterpolator;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Class BlockParserTest
+ * Class PlaceholderInterpolatorTest
  *
- * Tests the framework-independent UI response block syntax.
+ * Tests controlled component action prompt interpolation.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -35,36 +35,37 @@ use PHPUnit\Framework\TestCase;
  * @package Madj2k\AiCore\Tests
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class BlockParserTest extends TestCase
+final class PlaceholderInterpolatorTest extends TestCase
 {
     /**
-     * Tests Markdown and a JSON UI block are kept as separate blocks.
+     * Tests component and context values can be used.
      *
      * @return void
      */
-    public function testParsesMarkdownAndUiBlock(): void
+    public function testInterpolatesNestedValues(): void
     {
-        $blocks = (new BlockParser())->parse("Intro\n\n:::ui select-list\n{\"id\":\"choices\",\"options\":[{\"value\":\"a\"}]}\n:::\n\nOutro");
+        $result = (new PlaceholderInterpolator())->interpolate(
+            'Show {{label}} in step {{context.currentStep}}.',
+            ['label' => 'Food', 'context' => ['currentStep' => 2]],
+            ['label', 'context.currentStep'],
+        );
 
-        self::assertCount(3, $blocks);
-        self::assertSame('markdown', $blocks[0]->type);
-        self::assertSame('component', $blocks[1]->type);
-        self::assertSame('select-list', $blocks[1]->identifier);
-        self::assertSame('choices', $blocks[1]->id);
-        self::assertSame('a', $blocks[1]->data['options'][0]['value']);
-        self::assertSame('markdown', $blocks[2]->type);
+        self::assertSame('Show Food in step 2.', $result);
     }
 
     /**
-     * Tests malformed component JSON cannot create a component block.
+     * Tests values outside the allowed placeholder list remain untouched.
      *
      * @return void
      */
-    public function testKeepsMalformedBlockAsMarkdown(): void
+    public function testDoesNotInterpolateDisallowedValues(): void
     {
-        $blocks = (new BlockParser())->parse(":::ui button\nnot-json\n:::\n");
+        $result = (new PlaceholderInterpolator())->interpolate(
+            '{{allowed}} {{notAllowed}}',
+            ['allowed' => 'yes', 'notAllowed' => 'no'],
+            ['allowed'],
+        );
 
-        self::assertCount(1, $blocks);
-        self::assertSame('markdown', $blocks[0]->type);
+        self::assertSame('yes {{notAllowed}}', $result);
     }
 }

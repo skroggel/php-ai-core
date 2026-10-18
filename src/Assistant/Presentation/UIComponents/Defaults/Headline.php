@@ -19,14 +19,14 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
 
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class ProgressIndicator
+ * Class Headline
  *
- * Provides the default current/total progress indicator definition.
+ * Provides the default semantic inline-content headline definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -34,23 +34,23 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class ProgressIndicator
+final class Headline
 {
     /**
      * Returns the default definition.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition
+     * @return Definition Component definition.
      */
     public static function definition(): Definition
     {
         return new Definition(
-            'progress-indicator',
-            'Displays the current position in a multi-step interaction.',
-            '<div class="ai-progress" role="progressbar" aria-valuenow="{{current}}" aria-valuemax="{{total}}">Step {{current}} of {{total}}</div>',
+            'headline',
+            'Displays a short semantic section headline. Supply variable content only through its declared data fields. Provide the heading text in the declared data-field `text`',
+            '<h2>{{text}}</h2>',
             [],
-            ['current' => ['type' => 'integer'], 'total' => ['type' => 'integer']],
-            ['current', 'total'],
-            'ai-ui-progress-indicator',
+            ['text' => ['type' => 'string']],
+            ['text'],
+            'ai-ui-headline',
         );
     }
 }

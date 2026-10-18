@@ -25,6 +25,8 @@ use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
+use Madj2k\AiCore\Assistant\DTO\PromptRole;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 
 /**
  * Class RetrievalPlanContextBuilder
@@ -37,8 +39,9 @@ use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final readonly class RetrievalPlanContextBuilder implements ContextBuilderInterface
+final class RetrievalPlanContextBuilder extends AbstractContextBuilder
 {
+
     /**
      * @param AssistantPipelineProcessorType $type Pipeline step type.
      * @return bool Support flag.
@@ -53,9 +56,23 @@ final readonly class RetrievalPlanContextBuilder implements ContextBuilderInterf
     }
 
     /**
-     * @param Context $context Assistant context.
-     * @param PipelineStepConfigurationInterface $step Pipeline step.
-     * @return array<int,PromptSection> Prompt sections.
+     * @inheritDoc
+     */
+    public function getPromptRole(): PromptRole
+    {
+        return PromptRole::User;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getPromptType(): PromptType
+    {
+        return PromptType::Retrieval;
+    }
+
+    /**
+     * @inheritDoc
      */
     public function build(Context $context, PipelineStepConfigurationInterface $step): array
     {

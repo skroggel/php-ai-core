@@ -19,7 +19,7 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents;
 
 /**
  * Class Definition
@@ -38,7 +38,7 @@ final readonly class Definition
     /**
      * Constructor.
      *
-     * @param string $identifier Stable component identifier.
+     * @param string $identifier Configured component reference identifier.
      * @param string $description Description included in the LLM instructions.
      * @param string $template Framework-specific rendering template.
      * @param array<int,Action> $actions Allowed component actions.
@@ -47,6 +47,8 @@ final readonly class Definition
      * @param string $cssClass Additional CSS class for the component wrapper.
      * @param string $title Human-readable component title.
      * @param string $renderMode Component rendering mode: inline or block.
+     * @param string $type Technical component type, such as buttons or link.
+     * @param string $usage Prompt usage template. Supports {type} and {identifier} placeholders.
      */
     public function __construct(
         public string $identifier,
@@ -58,6 +60,8 @@ final readonly class Definition
         public string $cssClass = '',
         public string $title = '',
         public string $renderMode = 'block',
+        public string $type = '',
+        public string $usage = '',
     ) {
     }
 
@@ -70,6 +74,8 @@ final readonly class Definition
     {
         return [
             'identifier' => $this->identifier,
+            'type' => $this->type !== '' ? $this->type : $this->identifier,
+            'usage' => $this->usage,
             'template' => $this->template,
             'actions' => array_map(
                 static fn (Action $action): array => [
@@ -108,6 +114,8 @@ final readonly class Definition
             $this->cssClass,
             $this->title,
             $this->renderMode,
+            $this->type,
+            $this->usage,
         );
     }
 
@@ -139,6 +147,8 @@ final readonly class Definition
             implode(' ', $classes),
             $this->title,
             $this->renderMode,
+            $this->type,
+            $this->usage,
         );
     }
 
@@ -160,6 +170,8 @@ final readonly class Definition
             $this->cssClass,
             trim($title),
             $this->renderMode,
+            $this->type,
+            $this->usage,
         );
     }
 
@@ -181,6 +193,30 @@ final readonly class Definition
             $this->cssClass,
             $this->title,
             $this->renderMode,
+            $this->type,
+            $this->usage,
+        );
+    }
+
+    /**
+     * Returns a copy with a different technical component type.
+     *
+     * @param string $type Technical component type.
+     * @return self Definition copy.
+     */
+    public function withType(string $type): self
+    {
+        return new self(
+            $this->identifier,
+            $this->description,
+            $this->template,
+            $this->actions,
+            $this->dataSchema,
+            $this->placeholders,
+            $this->cssClass,
+            $this->title,
+            $this->renderMode,
+            trim($type),
         );
     }
 
@@ -212,6 +248,8 @@ final readonly class Definition
             $this->cssClass,
             $this->title,
             $this->renderMode,
+            $this->type,
+            $this->usage,
         )->withCssClass((string)($overrides['cssClass'] ?? ''));
     }
 }

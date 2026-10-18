@@ -27,6 +27,7 @@ use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 
 /**
  * Class RetrievalContextBuilder
@@ -51,7 +52,6 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
     ) {
     }
 
-
     /**
      * @inheritDoc
      */
@@ -65,6 +65,23 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
         ], true);
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function getPromptType(): PromptType
+    {
+        return PromptType::Retrieval;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getGeneralInstructions(AssistantPipelineProcessorType $type): array
+    {
+        return $this->supports($type) ? [
+            'Preserve every retrieval boundary and keep statements attributed to their retrieval. You may remove duplicates, but do not merge away the retrieval boundaries.',
+        ] : [];
+    }
 
     /**
      * @inheritDoc
@@ -123,7 +140,11 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
         }
 
         return $this->filterSections([
-            $this->section('Retrieved Context', $this->resolveAnswerContext($context, $step), 30),
+            $this->section(
+                'Retrieved Context',
+                $this->withGeneralInstructions($this->resolveAnswerContext($context, $step), $step),
+                30,
+            ),
         ]);
     }
 
@@ -144,7 +165,7 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
         return $this->filterSections([
             $this->section(
                 'Retrieved Context',
-                $this->buildRetrievedContext($context, $step),
+                $this->withGeneralInstructions($this->buildRetrievedContext($context, $step), $step),
                 20
             ),
         ]);
@@ -161,7 +182,11 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
     private function buildAnswerContextSections(Context $context, PipelineStepConfigurationInterface $step): array
     {
         return $this->filterSections([
-            $this->section('Answer Context', $this->resolveAnswerContext($context, $step, true), 30),
+            $this->section(
+                'Answer Context',
+                $this->withGeneralInstructions($this->resolveAnswerContext($context, $step, true), $step),
+                30,
+            ),
         ]);
     }
 
@@ -178,11 +203,6 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
         $groups = $context->getRetrieval()->getGroups();
 
         $sections = [];
-        if ($groups !== []) {
-            $sections[] .= "\n\n[Retrieval Attribution Requirement]\n"
-                . 'Preserve every [Retrieval-ID: ...] identifier exactly and keep statements attributed to their retrieval. '
-                . 'You may remove duplicates, but do not merge away the retrieval boundaries.';
-        }
 
         foreach ($groups as $group) {
             $content = $this->answerContextBuilder->buildGroup($group);
@@ -190,17 +210,48 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
                 continue;
             }
 
-            $header = sprintf('[Retrieval-ID: %s]', $group->identifier);
             $details = array_filter([
                 $group->query !== '' ? 'query: ' . $group->query : '',
                 $group->collection !== '' ? 'collection: ' . $group->collection : '',
             ]);
-            $sections[] = $header
-                . ($details !== [] ? "\n" . implode("\n", $details) : '')
-                . "\n\n" . $content;
+            $sections[] = $this->entry(
+                'RETRIEVAL',
+                $group->identifier,
+                ($details !== [] ? implode("\n", $details) . "\n\n" : '') . $content,
+            );
         }
 
         return $this->applyGlobalLimitFairly($sections, $step->getMaxContextCharacters());
+    }
+
+    /**
+     * Prepends retrieval-specific instructions to the retrieval context section.
+     *
+     * @param string $content Retrieval context.
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @return string Context with retrieval instructions.
+     */
+    private function withGeneralInstructions(
+        string $content,
+        PipelineStepConfigurationInterface $step,
+    ): string {
+        $instructions = $this->getGeneralInstructions($step->getType());
+        $result = $instructions === []
+            ? $content
+            : implode("\n", $instructions) . ($content !== '' ? "\n\n" . $content : '');
+
+        $maximumCharacters = $step->getMaxContextCharacters();
+        if ($maximumCharacters <= 0 || mb_strlen($result, 'UTF-8') <= $maximumCharacters) {
+            return $result;
+        }
+
+        // Keep the retrieval content when the instruction itself would consume
+        // the complete small context budget.
+        if ($content !== '' && mb_strlen(implode("\n", $instructions), 'UTF-8') >= $maximumCharacters) {
+            return mb_substr($content, 0, $maximumCharacters, 'UTF-8');
+        }
+
+        return mb_substr($result, 0, $maximumCharacters, 'UTF-8');
     }
 
     /**
@@ -223,7 +274,7 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
      */
     private function applyGlobalLimitFairly(array $sections, int $maximumCharacters): string
     {
-        $separator = "\n\n===\n\n";
+        $separator = "\n\n";
         $complete = implode($separator, $sections);
         if ($maximumCharacters <= 0 || strlen($complete) <= $maximumCharacters || count($sections) < 2) {
             return $maximumCharacters > 0 ? rtrim(substr($complete, 0, $maximumCharacters)) : $complete;

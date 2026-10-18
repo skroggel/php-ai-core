@@ -131,7 +131,6 @@ class DocumentMetadata
      *
      * @param string $sourceType Source type.
      * @param string $sourceIdentifier Source identifier.
-     * @param string $sourceGroupIdentifier Logical parent source identifier.
      * @param string $title Source title.
      * @param string $url Source URL.
      * @param string $language ISO language code.
@@ -145,7 +144,6 @@ class DocumentMetadata
     public function __construct(
         string $sourceType = '',
         string $sourceIdentifier = '',
-        string $sourceGroupIdentifier = '',
         string $title = '',
         string $url = '',
         string $language = '',
@@ -154,7 +152,8 @@ class DocumentMetadata
         string $path = '',
         string $filename = '',
         int $changedAt = 0,
-        array $additional = []
+        array $additional = [],
+        string $sourceGroupIdentifier = ''
     ) {
         $this->sourceType = trim($sourceType);
         $this->sourceIdentifier = trim($sourceIdentifier);

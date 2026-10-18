@@ -25,7 +25,9 @@ use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
+use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
 
 /**
@@ -57,7 +59,7 @@ final class PromptBuilder
      */
     public function __construct(
         private readonly ContextBuilderRegistry $contextBuilderRegistry,
-        private readonly Formatter $contextFormatter
+        private readonly Formatter $contextFormatter,
     ) {
     }
 
@@ -111,7 +113,6 @@ final class PromptBuilder
         return '';
     }
 
-
     /**
      * Builds the system prompt from selected assistant and step prompt parts.
      *
@@ -123,32 +124,55 @@ final class PromptBuilder
     {
         $assistant = $context->getAssistant();
         $parts = [];
+        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+            $context,
+            $step,
+            PromptType::Identity,
+            'Global Assistant Identity',
+            $step->getIncludeIdentityPrompt() ? $assistant->getIdentityPrompt() : '',
+            'Step Identity',
+            $step->getStepIdentity(),
+        ));
 
-        if ($step->getIncludeIdentityPrompt() && $assistant->getIdentityPrompt() !== '') {
-            $parts[] = "[Assistant Identity]\n" . $assistant->getIdentityPrompt();
-        }
-        if ($step->getIncludeBehaviorRules() && $assistant->getBehaviorRules() !== '') {
-            $parts[] = "[Assistant Behavior Rules]\n" . $assistant->getBehaviorRules();
-        }
-        if ($step->getIncludeRetrievalRules() && $assistant->getRetrievalRules() !== '') {
-            $parts[] = "[Assistant Retrieval Rules]\n" . $assistant->getRetrievalRules();
-        }
-        if ($step->getIncludeOutputRules() && $assistant->getOutputRules() !== '') {
-            $parts[] = "[Assistant Output Rules]\n" . $assistant->getOutputRules();
-        }
+        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+            $context,
+            $step,
+            PromptType::Behavior,
+            'Global Assistant Behavior Rules',
+            $step->getIncludeBehaviorRules() ? $assistant->getBehaviorRules() : '',
+            'Step Behavior Rules',
+            $step->getStepBehaviorRules(),
+        ));
 
-        if ($step->getStepIdentity() !== '') {
-            $parts[] = "[Step Identity]\n" . $step->getStepIdentity();
-        }
-        if ($step->getStepBehaviorRules() !== '') {
-            $parts[] = "[Step Behavior Rules]\n" . $step->getStepBehaviorRules();
-        }
-        if ($step->getStepRetrievalRules() !== '') {
-            $parts[] = "[Step Retrieval Rules]\n" . $step->getStepRetrievalRules();
-        }
-        if ($step->getStepOutputRules() !== '') {
-            $parts[] = "[Step Output Rules]\n" . $step->getStepOutputRules();
-        }
+        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+            $context,
+            $step,
+            PromptType::Retrieval,
+            'Global Assistant Retrieval Rules',
+            $step->getIncludeRetrievalRules() ? $assistant->getRetrievalRules() : '',
+            'Step Retrieval Rules',
+            $step->getStepRetrievalRules(),
+        ));
+
+        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+            $context,
+            $step,
+            PromptType::Output,
+            'Global Assistant Output Rules',
+            $step->getIncludeOutputRules() ? $assistant->getOutputRules() : '',
+            'Step Output Rules',
+            $step->getStepOutputRules(),
+        ));
+
+        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+            $context,
+            $step,
+            PromptType::None,
+            'Additional Prompt Context',
+            '',
+            'Additional Prompt Context',
+            '',
+        ));
 
         // Forward enabled runtime options to the language model as prompt instructions.
         if (in_array($step->getType(), [
@@ -157,18 +181,101 @@ final class PromptBuilder
         ], true)) {
             $chatOptions = $context->getRequest()->getChatOptions();
             if ($chatOptions->responseLanguage !== '') {
-                $parts[] = "[Response Language]\nRespond in this language: "
+                $parts[] = new PromptSection('Response Language', "Respond in this language: "
                     . $chatOptions->responseLanguage
-                    . '. This explicit response language takes priority over the language of the user message, quoted text and retrieved documents.';
+                    . '. This explicit response language takes priority over the language of the user message, quoted text and retrieved documents.');
             }
             if ($chatOptions->plainLanguage) {
-                $parts[] = "[Accessibility Requirements]\nUse plain language. Prefer familiar words, short sentences, short paragraphs and a clear structure. Explain unavoidable technical terms.";
+                $parts[] = new PromptSection(
+                    'Accessibility Requirements',
+                    'Use plain language. Prefer familiar words, short sentences, short paragraphs and a clear structure. Explain unavoidable technical terms.'
+                );
             }
         }
 
-        $parts[] = 'Runtime response language and accessibility requirements take priority over assistant and step output preferences. If assistant rules and step rules otherwise conflict, assistant rules have priority.';
+        $parts[] = new PromptSection('Priority Instructions',
+            'Runtime response language and accessibility requirements take priority over assistant and step output preferences.' .
+            'Step rules may specialize global assistant rules but must not weaken their safety, privacy, thematic restrictions or factual-source requirements. ' .
+            'For other conflicts, step rules take priority over global assistant rules.'
+        );
 
-        return implode("\n\n", array_filter($parts));
+        return $this->contextFormatter->format(array_filter($parts));
+    }
+
+    /**
+     * Builds one typed prompt parent and attaches the matching context sections.
+     *
+     * Step-specific rules receive the context sections whenever they are present;
+     * otherwise the sections are attached to the global rules.
+     *
+     * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType $type Parent prompt type.
+     * @param string $globalTitle Global parent title.
+     * @param string $globalContent Global parent content.
+     * @param string $stepTitle Step parent title.
+     * @param string $stepContent Step parent content.
+     * @return array<int, \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection> Prompt sections.
+     */
+    private function buildSystemPromptTypeSections(
+        Context $context,
+        PipelineStepConfigurationInterface $step,
+        PromptType $type,
+        string $globalTitle,
+        string $globalContent,
+        string $stepTitle,
+        string $stepContent,
+    ): array {
+        $sections = $this->contextBuilderRegistry->buildSystemSections($context, $step, $type);
+        if ($type === PromptType::None) {
+            return $sections === []
+                ? []
+                : [new PromptSection($globalTitle, '', sections: $sections)];
+        }
+
+        if ($stepContent !== '' && $this->usesStepPromptTypeConfiguration($step, $type)) {
+            $result = $globalContent !== '' ? [new PromptSection($globalTitle, $globalContent)] : [];
+            $result[] = new PromptSection($stepTitle, $stepContent, sections: $sections);
+            return $result;
+        }
+
+        if ($globalContent !== '') {
+            $result = [new PromptSection($globalTitle, $globalContent, sections: $sections)];
+            if ($stepContent !== '') {
+                $result[] = new PromptSection($stepTitle, $stepContent);
+            }
+            return $result;
+        }
+
+        return [];
+    }
+
+    /**
+     * Determines whether a prompt type is explicitly configured on the step.
+     *
+     * Inherit modes keep presentation and UI context on the global parent even
+     * when the step itself contains output rules.
+     *
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @param \Madj2k\AiCore\Assistant\DTO\PromptType $type Prompt type.
+     * @return bool Whether the step owns the typed context.
+     */
+    private function usesStepPromptTypeConfiguration(
+        PipelineStepConfigurationInterface $step,
+        PromptType $type,
+    ): bool {
+        if ($type !== PromptType::Output) {
+            return true;
+        }
+
+        $presentationMode = method_exists($step, 'getPresentationRulesMode')
+            ? $step->getPresentationRulesMode()
+            : 'inherit';
+        $uiMode = method_exists($step, 'getUiComponentsMode')
+            ? $step->getUiComponentsMode()
+            : 'inherit';
+
+        return $presentationMode !== 'inherit' || $uiMode !== 'inherit';
     }
 
 
@@ -191,12 +298,12 @@ final class PromptBuilder
             return '';
         }
 
-        $lines = ['[Chat History]'];
+        $lines = [];
         foreach ($messages as $message) {
             $lines[] = sprintf('%s: %s', $message['role'], $message['content']);
         }
 
-        return implode("\n", $lines);
+        return $this->contextFormatter->boundary('Chat History', implode("\n", $lines));
     }
 
 
@@ -209,6 +316,7 @@ final class PromptBuilder
      */
     private function buildContextPrompt(Context $context, PipelineStepConfigurationInterface $step): string
     {
-        return $this->contextFormatter->format($this->contextBuilderRegistry->buildSections($context, $step));
+        $userSections = $this->contextBuilderRegistry->buildUserSections($context, $step);
+        return $this->contextFormatter->format($userSections);
     }
 }

@@ -19,14 +19,12 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
-
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents;
 
 /**
- * Class Buttons
+ * Class Action
  *
- * Provides the default configurable button group definition.
+ * Describes one interaction that can be triggered by a UI component.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -34,23 +32,25 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class Buttons
+final readonly class Action
 {
     /**
-     * Returns the default definition.
+     * Constructor.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition
+     * @param string $identifier Action identifier.
+     * @param string $promptTemplate Prompt template sent as a normal user prompt.
+     * @param array<int,string> $placeholders Allowed placeholder names.
+     * @param string $label Visible button label.
+     * @param string $type Action type: prompt or link.
+     * @param string $url Link target for link actions.
      */
-    public static function definition(): Definition
-    {
-        return new Definition(
-            'buttons',
-            'Displays configured buttons that submit their configured prompts.',
-            '<div class="ai-buttons">{{#actions}}{{#url}}<a href="{{url}}" target="_blank" rel="noopener noreferrer">{{label}}</a>{{/url}}{{#promptTemplate}}<button type="button" data-ai-action="{{identifier}}">{{label}}</button>{{/promptTemplate}}{{/actions}}</div>',
-            [],
-            [],
-            ['actions', 'label', 'identifier'],
-            'ai-ui-buttons',
-        );
+    public function __construct(
+        public string $identifier,
+        public string $promptTemplate,
+        public array $placeholders = [],
+        public string $label = '',
+        public string $type = 'prompt',
+        public string $url = '',
+    ) {
     }
 }

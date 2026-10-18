@@ -151,6 +151,13 @@ interface PipelineStepConfigurationInterface
      */
     public function getStepOutputRules(): string;
 
+    /**
+     * Returns Stable identifiers of presentation rules.
+     *
+     * @return array<int,string>
+     */
+    public function getPresentationRuleIdentifiers(): array;
+
 
     /**
      * Returns the conversation history mode.
