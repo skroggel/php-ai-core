@@ -38,6 +38,7 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         private AssistantPipelineStage $stage = AssistantPipelineStage::PreAnswer,
         private ?VectorStoreConnectionConfigurationInterface $retrievalVectorStoreConnection = null,
         private string $retrievalCollection = '',
+        private array $presentationRuleIdentifiers = [],
         private string $retrievalIdentifier = '',
     ) {
     }
@@ -68,6 +69,7 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
     public function getMaxChunksPerResult(): int { return 1; }
     public function getMaxChunkCharacters(): int { return $this->maxChunkCharacters; }
     public function getPromptMetadataFieldList(): array { return $this->metadataFields; }
+    public function getPresentationRuleIdentifiers(): array { return $this->presentationRuleIdentifiers; }
     public function getFailureStrategy(): AssistantPipelineFailureStrategy { return $this->failureStrategy; }
     public function getRetrievalVectorStoreConnection(): ?VectorStoreConnectionConfigurationInterface { return $this->retrievalVectorStoreConnection; }
     public function getRetrievalCollection(): string { return $this->retrievalCollection; }

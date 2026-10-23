@@ -19,7 +19,7 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents;
 
 /**
  * Class PlaceholderInterpolator

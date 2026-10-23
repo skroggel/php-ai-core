@@ -22,6 +22,10 @@ declare(strict_types=1);
 namespace Madj2k\AiCore\Assistant\Prompt\Context\Builder;
 
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
+use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
+use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
+use Madj2k\AiCore\Assistant\DTO\PromptRole;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 
 /**
  * Class AbstractContextBuilder
@@ -36,6 +40,30 @@ use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 abstract class AbstractContextBuilder implements ContextBuilderInterface
 {
     /**
+     * @inheritDoc
+     */
+    public function getPromptRole(): PromptRole
+    {
+        return PromptRole::User;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getPromptType(): PromptType
+    {
+        return PromptType::None;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getGeneralInstructions(AssistantPipelineProcessorType $type): array
+    {
+        return [];
+    }
+
+    /**
      * Creates a prompt section or returns null for empty section data.
      *
      * @param string $title Section title.
@@ -46,7 +74,6 @@ abstract class AbstractContextBuilder implements ContextBuilderInterface
     protected function section(string $title, string $content, int $priority): ?PromptSection
     {
         $section = new PromptSection($title, $content, $priority);
-
         return $section->isEmpty() ? null : $section;
     }
 
@@ -63,4 +90,18 @@ abstract class AbstractContextBuilder implements ContextBuilderInterface
             static fn (?PromptSection $section): bool => $section instanceof PromptSection && !$section->isEmpty()
         ));
     }
+
+    /**
+     * Creates a nested prompt entry.
+     *
+     * @param string $type Entry type.
+     * @param string $identifier Entry identifier.
+     * @param string $content Entry content.
+     * @return string Formatted entry.
+     */
+    protected function entry(string $type, string $identifier, string $content): string
+    {
+        return new Formatter()->entry($type, $identifier, $content);
+    }
+
 }

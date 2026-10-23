@@ -19,7 +19,6 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 namespace Madj2k\AiCore\Assistant\Prompt\Context\Builder;
 
 use Madj2k\AiCore\Assistant\Context\Context;
@@ -46,12 +45,13 @@ final class QueryContextBuilder extends AbstractContextBuilder
     {
         return in_array($type, [
             AssistantPipelineProcessorType::QueryOptimizer,
-            AssistantPipelineProcessorType::RetrievalSelector,
+            AssistantPipelineProcessorType::IntentSelector,
             AssistantPipelineProcessorType::ContextOptimizer,
             AssistantPipelineProcessorType::AnswerGenerator,
             AssistantPipelineProcessorType::QualityGate,
         ], true);
     }
+
 
     /**
      * @inheritDoc
@@ -60,7 +60,7 @@ final class QueryContextBuilder extends AbstractContextBuilder
     {
         return match ($step->getType()) {
             AssistantPipelineProcessorType::QueryOptimizer,
-            AssistantPipelineProcessorType::RetrievalSelector => $this->filterSections([
+            AssistantPipelineProcessorType::IntentSelector => $this->filterSections([
                 $this->section('Current Query', $context->getCurrentQuery(), 10),
                 $this->section('Original User Query', $context->getRequest()->getQuery(), 20),
             ]),

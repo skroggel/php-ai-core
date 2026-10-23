@@ -19,12 +19,14 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
+
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class Block
+ * Class Buttons
  *
- * Represents one text or UI block in an assistant response.
+ * Provides the default configurable button group definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -32,23 +34,23 @@ namespace Madj2k\AiCore\Assistant\UIComponents;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final readonly class Block
+final class Buttons
 {
     /**
-     * Constructor.
+     * Returns the default definition.
      *
-     * @param string $type Block type: markdown or component.
-     * @param string $content Markdown content for text blocks.
-     * @param string $identifier Component identifier.
-     * @param string $id Component instance identifier.
-     * @param array<string,mixed> $data Component data.
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition
      */
-    public function __construct(
-        public string $type,
-        public string $content = '',
-        public string $identifier = '',
-        public string $id = '',
-        public array $data = [],
-    ) {
+    public static function definition(): Definition
+    {
+        return new Definition(
+            'buttons',
+            'Displays configured actions as links or buttons. Supply variable content only through its declared data fields.',
+            '<div class="ai-buttons">{{#actions}}{{#url}}<a href="{{url}}" target="_blank" rel="noopener noreferrer">{{label}}</a>{{/url}}{{#promptTemplate}}<button type="button" data-ai-action="{{identifier}}">{{label}}</button>{{/promptTemplate}}{{/actions}}</div>',
+            [],
+            [],
+            [],
+            'ai-ui-buttons',
+        );
     }
 }

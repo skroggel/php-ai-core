@@ -22,6 +22,7 @@ namespace Madj2k\AiCore\Assistant\Pipeline\Processor\Llm;
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalPlan;
+use Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
@@ -29,10 +30,9 @@ use Madj2k\AiCore\Assistant\Pipeline\Processor\AbstractLlmProcessor;
 use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
 use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
 /**
- * Class RetrievalSelectionProcessor
+ * Class IntentSelectionProcessor
  *
- * Uses a fixed JSON contract to select retrieval targets and stores the result
- * as a RetrievalPlan in the shared assistant context.
+ * Uses a fixed JSON contract to select retrieval targets and presentation rules.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -40,7 +40,7 @@ use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class RetrievalSelectionProcessor extends AbstractLlmProcessor
+final class IntentSelectionProcessor extends AbstractLlmProcessor
 {
     /**
      * Constructor.
@@ -50,13 +50,18 @@ final class RetrievalSelectionProcessor extends AbstractLlmProcessor
      * @param \Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface $pipelineLogger Pipeline logger.
      */
     public function __construct(AiConnectorResolver $aiConnectorResolver, PromptBuilder $promptBuilder, PipelineLoggerInterface $pipelineLogger)
-    { parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger); }
+    {
+        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
+    }
 
     /** @return string Processor identifier. */
-    public function getIdentifier(): string { return 'aiassistant.retrieval_selector.default'; }
+    public function getIdentifier(): string {
+        return 'aiassistant.intent_selector.default'; }
 
     /** @param \Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType $type Step type. */
-    public function supports(AssistantPipelineProcessorType $type): bool { return $type === AssistantPipelineProcessorType::RetrievalSelector; }
+    public function supports(AssistantPipelineProcessorType $type): bool {
+        return $type === AssistantPipelineProcessorType::IntentSelector;
+    }
 
     /** @param \Madj2k\AiCore\Assistant\Context\Context $context Assistant context. @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step. */
     public function canProcess(Context $context, PipelineStepConfigurationInterface $step): bool { return trim($context->getCurrentQuery()) !== ''; }
@@ -74,10 +79,13 @@ final class RetrievalSelectionProcessor extends AbstractLlmProcessor
         $raw = $this->callAi($context, $this->promptBuilder->buildMessages($context, $step), $step, $logContext);
         $json = $this->decodeSelection($raw);
         if (!is_array($json)) { return; }
-        $mode = in_array($json['mode'] ?? '', ['all', 'selected', 'all_except', 'none'], true) ? $json['mode'] : 'all';
-        $targets = is_array($json['targets'] ?? null) ? array_values(array_filter(array_map('strval', $json['targets']))) : [];
+        $retrieval = is_array($json['retrieval'] ?? null) ? $json['retrieval'] : [];
+        $presentationRules = is_array($json['presentationRules'] ?? null) ? $json['presentationRules'] : [];
+        [$retrievalMode, $targets] = $this->selection($retrieval, 'targets');
+        [$rulesMode, $rules] = $this->selection($presentationRules, 'rules');
         $metadata = is_array($json['metadata'] ?? null) ? $json['metadata'] : [];
-        $context->setRetrievalPlan(new RetrievalPlan($mode, $targets, $metadata));
+        $context->setRetrievalPlan(new RetrievalPlan($retrievalMode, $targets, $metadata));
+        $context->setPresentationRulePlan(new PresentationRulePlan($rulesMode, $rules, $metadata));
     }
 
     /**
@@ -104,5 +112,19 @@ final class RetrievalSelectionProcessor extends AbstractLlmProcessor
         $decoded = json_decode(substr($value, $start, $end - $start + 1), true);
 
         return is_array($decoded) ? $decoded : null;
+    }
+
+    /** @return array{string,array<int,string>} */
+    private function selection(array $area, string $key): array
+    {
+        $mode = in_array($area['mode'] ?? null, ['all', 'selected', 'all_except', 'none'], true)
+            ? $area['mode']
+            : 'all';
+        $values = is_array($area[$key] ?? null) ? $area[$key] : [];
+        $values = array_map(static fn ($value): string => trim((string)$value), $values);
+        if (in_array($mode, ['all', 'none'], true)) {
+            $values = [];
+        }
+        return [$mode, array_values(array_filter($values, static fn (string $value): bool => $value !== ''))];
     }
 }

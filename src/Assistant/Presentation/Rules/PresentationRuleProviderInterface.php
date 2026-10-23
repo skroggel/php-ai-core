@@ -19,38 +19,30 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\Rules;
 
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
+use Madj2k\AiCore\Assistant\Context\Context;
 
 /**
- * Class Headline
+ * Interface PresentationRuleProviderInterface
  *
- * Provides the default semantic inline-content headline definition.
+ * Resolves presentation rules by stable identifier.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
- * @author Maximilian Fäßler <maximilian@faesslerweb.de>
  * @copyright Steffen Kroggel <developer@steffenkroggel.de>, Maximilian Fäßler <maximilian@faesslerweb.de>
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class Headline
+interface PresentationRuleProviderInterface
 {
+    /** @return array<int,PresentationRule> All available rules. */
+    public function getAll(): array;
+
     /**
-     * Returns the default definition.
-     *
-     * @return Definition Component definition.
+     * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @return array<int,PresentationRule> Rules effective for the step.
      */
-    public static function definition(): Definition
-    {
-        return new Definition(
-            'headline',
-            'Displays a short semantic section headline.',
-            '<h2>{{text}}</h2>',
-            [],
-            ['text' => ['type' => 'string']],
-            ['text'],
-            'ai-ui-headline',
-        );
-    }
+    public function getRules(Context $context, PipelineStepConfigurationInterface $step): array;
 }

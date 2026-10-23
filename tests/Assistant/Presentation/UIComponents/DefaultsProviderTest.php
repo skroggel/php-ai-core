@@ -19,10 +19,10 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Tests\Assistant\UIComponents;
+namespace Madj2k\AiCore\Tests\Assistant\Presentation\UIComponents;
 
-use Madj2k\AiCore\Assistant\UIComponents\Action;
-use Madj2k\AiCore\Assistant\UIComponents\Defaults\Provider;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Action;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults\Provider;
 use PHPUnit\Framework\TestCase;
 
 /**

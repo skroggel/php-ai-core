@@ -19,12 +19,14 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
+
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class Action
+ * Class ProgressIndicator
  *
- * Describes one interaction that can be triggered by a UI component.
+ * Provides the default current/total progress indicator definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -32,25 +34,23 @@ namespace Madj2k\AiCore\Assistant\UIComponents;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final readonly class Action
+final class ProgressIndicator
 {
     /**
-     * Constructor.
+     * Returns the default definition.
      *
-     * @param string $identifier Action identifier.
-     * @param string $promptTemplate Prompt template sent as a normal user prompt.
-     * @param array<int,string> $placeholders Allowed placeholder names.
-     * @param string $label Visible button label.
-     * @param string $type Action type: prompt or link.
-     * @param string $url Link target for link actions.
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition
      */
-    public function __construct(
-        public string $identifier,
-        public string $promptTemplate,
-        public array $placeholders = [],
-        public string $label = '',
-        public string $type = 'prompt',
-        public string $url = '',
-    ) {
+    public static function definition(): Definition
+    {
+        return new Definition(
+            'progress-indicator',
+            'Displays progress in a multi-step interaction. Supply variable content only through its declared data fields.',
+            '<div class="ai-progress" role="progressbar" aria-valuenow="{{current}}" aria-valuemax="{{total}}">Step {{current}} of {{total}}</div>',
+            [],
+            ['current' => ['type' => 'integer'], 'total' => ['type' => 'integer']],
+            ['current', 'total'],
+            'ai-ui-progress-indicator',
+        );
     }
 }

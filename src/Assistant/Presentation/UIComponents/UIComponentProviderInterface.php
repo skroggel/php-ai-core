@@ -19,13 +19,13 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents;
 
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Context\Context;
 
 /**
- * Interface ProviderInterface
+ * Interface UIComponentProviderInterface
  *
  * Provides the effective UI component definitions for one pipeline step.
  *
@@ -35,7 +35,7 @@ use Madj2k\AiCore\Assistant\Context\Context;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-interface ProviderInterface
+interface UIComponentProviderInterface
 {
     /**
      * Returns components available to the current pipeline step.

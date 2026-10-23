@@ -35,7 +35,7 @@ enum AssistantPipelineProcessorType: string
 {
     case QueryOptimizer = 'query_optimizer';
     case Retriever = 'retriever';
-    case RetrievalSelector = 'retrieval_selector';
+    case IntentSelector = 'intent_selector';
     case ContextOptimizer = 'context_optimizer';
     case AnswerGenerator = 'answer_generator';
     case QualityGate = 'quality_gate';
@@ -49,7 +49,7 @@ enum AssistantPipelineProcessorType: string
         return match ($this) {
             self::QueryOptimizer => 'Query optimizer',
             self::Retriever => 'Retriever',
-            self::RetrievalSelector => 'Retrieval selector',
+            self::IntentSelector => 'Intent selector',
             self::ContextOptimizer => 'Context optimizer',
             self::AnswerGenerator => 'Answer generator',
             self::QualityGate => 'Quality gate',

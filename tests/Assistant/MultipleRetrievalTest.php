@@ -83,8 +83,8 @@ final class MultipleRetrievalTest extends TestCase
         );
 
         self::assertCount(1, $sections);
-        self::assertStringContainsString('[Retrieval: search-results]', $sections[0]->content);
-        self::assertStringContainsString('[Retrieval: qdrant]', $sections[0]->content);
+        self::assertStringContainsString('----- BEGIN RETRIEVAL: search-results -----', $sections[0]->content);
+        self::assertStringContainsString('----- BEGIN RETRIEVAL: qdrant -----', $sections[0]->content);
     }
 
     public function testGlobalLimitSharesSpaceAcrossRetrievals(): void
@@ -105,13 +105,13 @@ final class MultipleRetrievalTest extends TestCase
             $context,
             new PipelineStep(
                 type: AssistantPipelineProcessorType::ContextOptimizer,
-                maxContextCharacters: 160,
+                maxContextCharacters: 500,
             ),
         );
 
-        self::assertStringContainsString('[Retrieval: first]', $sections[0]->content);
-        self::assertStringContainsString('[Retrieval: second]', $sections[0]->content);
-        self::assertLessThanOrEqual(160, strlen($sections[0]->content));
+        self::assertStringContainsString('----- BEGIN RETRIEVAL: first -----', $sections[0]->content);
+        self::assertStringContainsString('----- BEGIN RETRIEVAL: second -----', $sections[0]->content);
+        self::assertLessThanOrEqual(500, strlen($sections[0]->content));
     }
 
     public function testRetrievalGroupsSurviveMemorySerialization(): void

@@ -12,9 +12,10 @@ UI components use a dedicated, self-contained JSON marker syntax:
 @@UI_COMPONENT {"type":"select-list","data":{"id":"products","options":[{"label":"A","value":"a"}]}}
 ```
 
-Normal Markdown and UI blocks can be mixed in one answer. `BlockParser` parses
-complete blocks and creates stable instance identifiers when no `id` is given.
-Unknown or malformed blocks must not create frontend components.
+Normal Markdown and UI components can be mixed in one answer. The frontend
+parses complete JSON markers and creates stable instance identifiers when no
+`id` is given. Unknown or malformed markers must not create frontend
+components.
 
 ## Definitions
 
@@ -55,7 +56,7 @@ Navigation components use regular configured links and do not submit prompts.
 Built-in definitions live under:
 
 ```text
-Assistant/UIComponents/Defaults/
+Assistant/Presentation/UIComponents/Defaults/
 ```
 
 The catalog currently includes `select-list`, `link-list`, `link`, `buttons`,

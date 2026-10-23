@@ -20,6 +20,22 @@ identifier and then verifies that `supports($type)` returns `true`.
 This separation allows multiple implementations for the same semantic
 processor type.
 
+### Intent selection contract
+
+`IntentSelectionProcessor` expects JSON with two independent selection areas:
+
+```json
+{
+  "retrieval": {"mode": "all", "targets": []},
+  "presentationRules": {"mode": "all", "rules": []},
+  "metadata": {}
+}
+```
+
+Both areas support `all`, `selected`, `all_except` and `none`. Missing or
+invalid areas safely default to `all`; `metadata` is optional. The intent
+context explicitly lists all available target and rule identifiers.
+
 ## Processor types
 
 `AssistantPipelineProcessorType` currently defines:
@@ -28,6 +44,7 @@ processor type.
 |---------------------|--------------------------------------------------|
 | `query_optimizer`   | Rewrite/normalize the working query              |
 | `retriever`         | Retrieve source documents                        |
+| `intent_selector`   | Select retrieval targets and presentation rules  |
 | `context_optimizer` | Condense retrieval results for answer generation |
 | `answer_generator`  | Create the answer candidate                      |
 | `quality_gate`      | Review/finalize an answer candidate              |

@@ -29,9 +29,13 @@ If you are new to the library, read the documentation in this order:
      components and configured interactions.
 8.  [Vector filters](concepts/vector-filters.md) - generic payload filters and
      connector mapping.
-9.  [Indexing](workflows/indexing.md) - chunking, embeddings,
+9.  [Retrieval selection](concepts/retrieval-selection.md) - model-controlled
+     retrieval routing and metadata.
+10. [Configuration exports](concepts/exports.md) - AI-readable pipeline
+     configuration documents.
+11. [Indexing](workflows/indexing.md) - chunking, embeddings,
      generations and vector writes.
-10. [Extension points](extending/overview.md) - where custom
+12. [Extension points](extending/overview.md) - where custom
     implementations plug in.
 
 ## Architectural principles

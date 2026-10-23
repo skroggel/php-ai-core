@@ -19,9 +19,9 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
 
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
  * Class Provider
@@ -40,7 +40,7 @@ final class Provider
      * Returns one built-in definition.
      *
      * @param string $identifier
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition|null
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition|null
      */
     public function get(string $identifier): ?Definition
     {

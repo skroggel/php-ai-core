@@ -19,14 +19,14 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
+namespace Madj2k\AiCore\Assistant\Presentation\UIComponents\Defaults;
 
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
 
 /**
- * Class Link
+ * Class LinkList
  *
- * Provides the default inline link definition.
+ * Provides the default prompt-triggering link list definition.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -34,25 +34,27 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class Link
+final class LinkList
 {
     /**
      * Returns the default definition.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition
+     * @return \Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition
      */
     public static function definition(): Definition
     {
         return new Definition(
-            'link',
-            'Displays one inline link within the answer text.',
-            '<a href="{{url}}" target="_blank" rel="noopener noreferrer">{{label}}</a>',
+            'link-list',
+            'Displays a list of direct links. Supply variable content only through its declared data fields.',
+            '<nav class="ai-link-list" aria-label="Options"><ul>{{#options}}<li><a href="{{url}}" target="_blank" rel="noopener noreferrer">{{label}}</a></li>{{/options}}</ul></nav>',
             [],
-            ['label' => ['type' => 'string'], 'url' => ['type' => 'string']],
-            ['label', 'url'],
-            'ai-ui-link',
-            '',
-            'inline',
+            [
+                'options' => ['type' => 'array'],
+                'options[].label' => ['type' => 'string'],
+                'options[].url' => ['type' => 'string'],
+            ],
+            ['options', 'label', 'url'],
+            'ai-ui-link-list',
         );
     }
 }

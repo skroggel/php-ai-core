@@ -19,14 +19,13 @@ declare(strict_types=1);
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Madj2k\AiCore\Assistant\UIComponents\Defaults;
-
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+namespace Madj2k\AiCore\Assistant\Context\Presentation;
 
 /**
- * Class Decorative
+ * Class RetrievalPlan
  *
- * Provides the default non-interactive separator definition.
+ * Holds the optional runtime selection of presentation-rules. The default is
+ * deliberately permissive so existing pipelines keep all presentation-rules enabled.
  *
  * @author Steffen Kroggel <developer@steffenkroggel.de>
  * @author Maximilian Fäßler <maximilian@faesslerweb.de>
@@ -34,23 +33,35 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final class Decorative
+final readonly class PresentationRulePlan
 {
     /**
-     * Returns the default definition.
+     * Constructor.
      *
-     * @return \Madj2k\AiCore\Assistant\UIComponents\Definition
+     * @param string $mode
+     * @param array $rules
+     * @param array $metadata
      */
-    public static function definition(): Definition
+    public function __construct(
+        public string $mode = 'all',
+        public array $rules = [],
+        public array $metadata = [],
+    ) {
+    }
+
+    /**
+     * Determines whether one presentationRule may execute.
+     *
+     * @param string $identifier
+     * @return bool
+     */
+    public function allows(string $identifier): bool
     {
-        return new Definition(
-            'decorative',
-            'Displays a visual separator without interaction.',
-            '<hr class="ai-decorative-separator">',
-            [],
-            [],
-            [],
-            'ai-ui-decorative',
-        );
+        return match ($this->mode) {
+            'selected' => in_array($identifier, $this->rules, true),
+            'all_except' => !in_array($identifier, $this->rules, true),
+            'none' => false,
+            default => true,
+        };
     }
 }

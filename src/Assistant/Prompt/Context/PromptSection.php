@@ -38,12 +38,15 @@ final readonly class PromptSection
      *
      * @param string $title Section title.
      * @param string $content Section content.
-     * @param int $priority Sorting priority.
+     * @param int|null $priority Sorting priority for top-level sections.
+     * @param array<int, self> $sections Nested prompt sections.
      */
     public function __construct(
         public string $title,
         public string $content,
-        public int $priority = 100
+        public ?int $priority = null,
+        /** @var array<int, self> */
+        public array $sections = [],
     ) {
     }
 
@@ -55,17 +58,9 @@ final readonly class PromptSection
      */
     public function isEmpty(): bool
     {
-        return trim($this->title) === '' || trim($this->content) === '';
+        return trim($this->title) === ''
+            || (trim($this->content) === '' && $this->sections === []);
     }
 
 
-    /**
-     * Converts the section to the prompt text format.
-     *
-     * @return string Formatted section.
-     */
-    public function toText(): string
-    {
-        return '[' . trim($this->title) . ']' . "\n" . trim($this->content);
-    }
 }

@@ -10,14 +10,10 @@ declare(strict_types=1);
 namespace Madj2k\AiCore\Tests\Assistant;
 
 use Madj2k\AiCore\Assistant\Memory\PhpSessionStore;
-use PHPUnit\Framework\Attributes\PreserveGlobalState;
-use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
 final class PhpSessionStoreTest extends TestCase
 {
-    #[RunInSeparateProcess]
-    #[PreserveGlobalState(false)]
     public function testPersistsValuesWithoutKeepingTheSessionLocked(): void
     {
         session_save_path(sys_get_temp_dir());

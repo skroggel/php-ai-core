@@ -24,8 +24,19 @@ namespace Madj2k\AiCore\Assistant\Export;
 use Madj2k\AiCore\Assistant\Configuration\AssistantConfigurationInterface;
 use Madj2k\AiCore\Assistant\Configuration\FilterAwarePipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
+use Madj2k\AiCore\Assistant\Context\Answer\AnswerState;
+use Madj2k\AiCore\Assistant\Context\Assistant\AssistantContext;
+use Madj2k\AiCore\Assistant\Context\Context;
+use Madj2k\AiCore\Assistant\Context\Request\History;
+use Madj2k\AiCore\Assistant\Context\Request\Request;
+use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalResult;
+use Madj2k\AiCore\Assistant\Context\Trace\ProcessingTrace;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
-use Madj2k\AiCore\Assistant\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\Definition;
+use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRule;
+use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
+use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
+use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
 
 /**
  * Class PipelineMarkdownExporter
@@ -41,14 +52,42 @@ use Madj2k\AiCore\Assistant\UIComponents\Definition;
  */
 final class PipelineMarkdownExporter
 {
+
+    /**
+     * @var \Madj2k\AiCore\Assistant\Prompt\Context\Formatter
+     */
+    private readonly Formatter $promptFormatter;
+
+    /**
+     * @var \Madj2k\AiCore\Assistant\Prompt\PromptBuilder
+     */
+    private readonly PromptBuilder $promptBuilder;
+
+
+    /**
+     * Constructor
+     *
+     * @param \Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry|null $contextBuilderRegistry
+     */
+    public function __construct(
+        private readonly ?ContextBuilderRegistry $contextBuilderRegistry = null,
+    ) {
+        $this->promptFormatter = new Formatter();
+        $this->promptBuilder = new PromptBuilder(
+            $this->contextBuilderRegistry ?? new ContextBuilderRegistry([]),
+            $this->promptFormatter,
+        );
+    }
+
     /**
      * Exports one assistant configuration.
      *
      * @param AssistantConfigurationInterface $assistant Assistant configuration.
      * @param array<int,Definition> $uiComponents Effective UI component definitions.
+     * @param array<int,PresentationRule> $presentationRules Reusable presentation rule definitions.
      * @return string Markdown export.
      */
-    public function export(AssistantConfigurationInterface $assistant, array $uiComponents = []): string
+    public function export(AssistantConfigurationInterface $assistant, array $uiComponents = [], array $presentationRules = []): string
     {
         $lines = [
             '> You are reviewing the configuration of an AI assistant pipeline.',
@@ -57,6 +96,7 @@ final class PipelineMarkdownExporter
             '> Pay particular attention to processor types, execution stages, include settings, step prompts, history policy and retrieval limits.',
             '> When proposing improvements, preserve the distinction between retrieval, context optimization, answer generation and quality gate responsibilities.',
             '> Do not assume that a later step can repair content that an earlier step has already emitted.',
+            '> If the pipeline contains an intent selector step, presentation rules and retrievers may be prefiltered for subsequent steps based on the detected intent; account for this when analyzing the effective prompts and pipeline behavior.',
             '',
             '# Assistant Pipeline Brief',
             '',
@@ -65,15 +105,9 @@ final class PipelineMarkdownExporter
             '- Title: ' . $this->value($assistant->getTitle()),
             '- Name: ' . $this->value($assistant->getAssistantName()),
             '',
-            '## Global Prompts',
-            '',
-            $this->prompt('Identity', $assistant->getIdentityPrompt()),
-            $this->prompt('Behavior Rules', $assistant->getBehaviorRules()),
-            $this->prompt('Retrieval Rules', $assistant->getRetrievalRules()),
-            $this->prompt('Output Rules', $assistant->getOutputRules()),
-            '',
-            '## Pipeline',
+            '## Reference Definitions',
         ];
+        $definitionStart = count($lines) - 1;
 
         if ($uiComponents !== []) {
             $lines[] = '';
@@ -113,6 +147,27 @@ final class PipelineMarkdownExporter
             }
         }
 
+        if ($presentationRules !== []) {
+            $lines[] = '';
+            $lines[] = '## Presentation Rule Definitions';
+            foreach ($presentationRules as $rule) {
+                if (!$rule instanceof PresentationRule) {
+                    continue;
+                }
+                $lines[] = '';
+                $lines[] = '### ' . $this->value($rule->title !== '' ? $rule->title : $rule->identifier);
+                $lines[] = '';
+                $lines[] = '- Identifier: `' . $rule->identifier . '`';
+                $lines[] = '```text';
+                $lines[] = $rule->content;
+                $lines[] = '```';
+            }
+        }
+
+        $referenceDefinitions = array_splice($lines, $definitionStart);
+        $lines[] = '';
+        $lines[] = '## Pipeline';
+
         $steps = [];
         foreach ($assistant->getChatPipelineSteps() as $candidate) {
             if ($candidate instanceof PipelineStepConfigurationInterface) {
@@ -132,19 +187,23 @@ final class PipelineMarkdownExporter
             $lines[] = '- Processor: `' . $this->value($step->getProcessorIdentifier()) . '`';
             $lines[] = '- Failure strategy: `' . $step->getFailureStrategy()->value . '`';
             $lines[] = '';
-            $lines[] = '#### Include Settings';
+            if ($step->isLlmStep()) {
+                $messages = $this->buildExportMessages($assistant, $step);
+                $lines[] = '#### Effective System Prompt';
+                $lines[] = '';
+                $this->appendTextBlock($lines, $messages[0]['content']);
+                $lines[] = '';
+                $lines[] = '#### Effective User Prompt';
+                $lines[] = '';
+                $this->appendTextBlock($lines, $messages[1]['content']);
+                $lines[] = '';
+            }
+            $lines[] = '#### Settings';
             $lines[] = '';
             $lines[] = '- Identity prompt: ' . $this->boolean($step->getIncludeIdentityPrompt());
             $lines[] = '- Behavior rules: ' . $this->boolean($step->getIncludeBehaviorRules());
             $lines[] = '- Retrieval rules: ' . $this->boolean($step->getIncludeRetrievalRules());
             $lines[] = '- Output rules: ' . $this->boolean($step->getIncludeOutputRules());
-            $lines[] = '';
-            $lines[] = '#### Step Prompts';
-            $lines[] = '';
-            $lines[] = $this->prompt('Step Identity', $step->getStepIdentity());
-            $lines[] = $this->prompt('Step Behavior Rules', $step->getStepBehaviorRules());
-            $lines[] = $this->prompt('Step Retrieval Rules', $step->getStepRetrievalRules());
-            $lines[] = $this->prompt('Step Output Rules', $step->getStepOutputRules());
             $lines[] = '';
             $lines[] = '#### Runtime Settings';
             $lines[] = '';
@@ -154,29 +213,32 @@ final class PipelineMarkdownExporter
             $lines[] = '- Temperature: `' . $step->getTemperature() . '`';
             $lines[] = '- Maximum tokens: `' . $step->getMaxTokens() . '`';
             $lines[] = '- Maximum retrieval results: `' . $step->getMaxRetrievalResults() . '`';
+            $lines[] = '- Maximum context chunks: `' . $step->getMaxContextChunks() . '`';
+            $lines[] = '- Maximum context characters: `' . $step->getMaxContextCharacters() . '`';
+            $lines[] = '- Maximum chunks per result: `' . $step->getMaxChunksPerResult() . '`';
+            $lines[] = '- Maximum chunk characters: `' . $step->getMaxChunkCharacters() . '`';
             $lines[] = '- Score threshold: `' . $step->getScoreThreshold() . '`';
             $lines[] = '- Collection: `' . $this->value($step->getRetrievalCollection()) . '`';
             $lines[] = '- Prompt metadata fields: `' . implode(', ', $step->getPromptMetadataFieldList()) . '`';
+            $lines[] = '- Presentation rule references: `' . implode(', ', $step->getPresentationRuleIdentifiers()) . '`';
+            if (method_exists($step, 'getPresentationRulesMode')) {
+                $lines[] = '- Presentation rules mode: `' . $this->value($step->getPresentationRulesMode()) . '`';
+            }
+            if (method_exists($step, 'getUiComponentsMode')) {
+                $lines[] = '- UI components mode: `' . $this->value($step->getUiComponentsMode()) . '`';
+            }
+            if (method_exists($step, 'getUiComponentUids') && $step->getUiComponentUids() !== []) {
+                $lines[] = '- UI component references: `' . implode(', ', $step->getUiComponentUids()) . '`';
+            }
 
             if ($step->getType() === AssistantPipelineProcessorType::Retriever && method_exists($step, 'getRetrievalIdentifier')) {
                 $lines[] = '- Retrieval identifier: `' . $this->value($step->getRetrievalIdentifier()) . '`';
             }
 
-            if ($step->getType() === AssistantPipelineProcessorType::RetrievalSelector) {
+            if ($step->getType() === AssistantPipelineProcessorType::IntentSelector) {
                 $lines[] = '';
-                $lines[] = '#### Retrieval Selection Contract';
+                $lines[] = '#### Configured Retrieval Targets';
                 $lines[] = '';
-                $lines[] = 'The selector must return JSON with this fixed structure:';
-                $lines[] = '';
-                $lines[] = '```json';
-                $lines[] = '{';
-                $lines[] = '  "mode": "all|selected|all_except|none",';
-                $lines[] = '  "targets": ["retrieval-identifier"],';
-                $lines[] = '  "metadata": {}';
-                $lines[] = '}';
-                $lines[] = '```';
-                $lines[] = '';
-                $lines[] = 'Available retrieval targets:';
                 foreach ($steps as $targetStep) {
                     if ($targetStep instanceof PipelineStepConfigurationInterface
                         && $targetStep->getType() === AssistantPipelineProcessorType::Retriever
@@ -185,16 +247,11 @@ final class PipelineMarkdownExporter
                         $lines[] = '- `' . $targetStep->getRetrievalIdentifier() . '` - ' . $this->value($targetStep->getTitle());
                     }
                 }
-                if (method_exists($step, 'getRetrievalSelectionInstructions') && $step->getRetrievalSelectionInstructions() !== '') {
-                    $lines[] = '';
-                    $lines[] = 'Additional selection instructions:';
-                    $lines[] = $step->getRetrievalSelectionInstructions();
-                }
-                if (method_exists($step, 'getRetrievalSelectionMetadata') && $step->getRetrievalSelectionMetadata() !== '') {
+                if (method_exists($step, 'getIntentSelectionMetadata') && $step->getIntentSelectionMetadata() !== '') {
                     $lines[] = '';
                     $lines[] = 'Configured metadata schema:';
                     $lines[] = '```json';
-                    $lines[] = $step->getRetrievalSelectionMetadata();
+                    $lines[] = $step->getIntentSelectionMetadata();
                     $lines[] = '```';
                 }
             }
@@ -210,18 +267,68 @@ final class PipelineMarkdownExporter
             }
         }
 
+        $lines[] = '';
+        $lines = array_merge($lines, $referenceDefinitions);
+
         return trim(implode("\n", $lines)) . "\n";
     }
 
     /**
-     * @param string $title
-     * @param string $content
-     * @return string
+     * Builds the exact prompt messages for one pipeline step through PromptBuilder.
+     *
+     * The context intentionally contains no retrieval or conversation data. This
+     * keeps the export deterministic while using the same prompt composition path
+     * as the runtime pipeline.
+     *
+     * @param \Madj2k\AiCore\Assistant\Configuration\AssistantConfigurationInterface $assistant Assistant configuration.
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
+     * @return array<int,array{role:string,content:string}> Prompt messages.
      */
-    private function prompt(string $title, string $content): string
+    private function buildExportMessages(
+        AssistantConfigurationInterface $assistant,
+        PipelineStepConfigurationInterface $step,
+    ): array {
+        $context = new Context(
+            new AssistantContext(
+                $assistant->getUid() ?? 0,
+                $assistant->getTitle(),
+                $assistant->getAssistantName(),
+                $assistant->getAiConnection(),
+                $assistant->getVectorStoreConnection(),
+                $assistant->getIdentityPrompt(),
+                $assistant->getBehaviorRules(),
+                $assistant->getRetrievalRules(),
+                $assistant->getOutputRules(),
+            ),
+            new Request(''),
+            new History([]),
+            new RetrievalResult(),
+            new AnswerState(),
+            new ProcessingTrace(),
+        );
+
+        return $this->promptBuilder->buildMessages($context, $step);
+    }
+
+    /**
+     * Appends a Markdown text block whose fence cannot be closed by prompt content.
+     *
+     * @param array<int,string> &$lines Markdown output lines.
+     * @param string $content Prompt content.
+     * @return void
+     */
+    private function appendTextBlock(array &$lines, string $content): void
     {
-        $content = trim($content);
-        return $content === '' ? '##### ' . $title . "\n\n_(not configured)_" : '##### ' . $title . "\n\n```text\n" . $content . "\n```";
+        preg_match_all('/`+/', $content, $matches);
+        $longestFence = 0;
+        foreach ($matches[0] as $match) {
+            $longestFence = max($longestFence, strlen($match));
+        }
+
+        $fence = str_repeat('`', max(3, $longestFence + 1));
+        $lines[] = $fence . 'text';
+        $lines[] = $content;
+        $lines[] = $fence;
     }
 
     /**

@@ -47,6 +47,7 @@ final class AnswerCandidateContextBuilder extends AbstractContextBuilder
         return $type === AssistantPipelineProcessorType::QualityGate;
     }
 
+
     /**
      * @inheritDoc
      */

@@ -25,7 +25,9 @@ use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
-use Madj2k\AiCore\Assistant\UIComponents\ProviderInterface;
+use Madj2k\AiCore\Assistant\Presentation\UIComponents\UIComponentProviderInterface;
+use Madj2k\AiCore\Assistant\DTO\PromptRole;
+use Madj2k\AiCore\Assistant\DTO\PromptType;
 
 /**
  * Class UIComponentsContextBuilder
@@ -38,14 +40,14 @@ use Madj2k\AiCore\Assistant\UIComponents\ProviderInterface;
  * @package Madj2k\AiCore
  * @license https://www.gnu.org/licenses/gpl-3.0.html GNU General Public License, version 3
  */
-final readonly class UIComponentsContextBuilder implements ContextBuilderInterface
+final class UIComponentsContextBuilder extends AbstractContextBuilder
 {
     /**
      * Constructor.
      *
-     * @param \Madj2k\AiCore\Assistant\UIComponents\ProviderInterface $provider Component definition provider.
+     * @param \Madj2k\AiCore\Assistant\Presentation\UIComponents\UIComponentProviderInterface $provider Component definition provider.
      */
-    public function __construct(private ProviderInterface $provider)
+    public function __construct(private UIComponentProviderInterface $provider)
     {
     }
 
@@ -63,63 +65,90 @@ final readonly class UIComponentsContextBuilder implements ContextBuilderInterfa
     /**
      * @inheritDoc
      */
+    public function getPromptRole(): PromptRole
+    {
+        return PromptRole::System;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getPromptType(): PromptType
+    {
+        return PromptType::Output;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getGeneralInstructions(AssistantPipelineProcessorType $type): array
+    {
+        return $this->supports($type) ? [
+            'Use configured UI components exactly where required by the applicable output instructions. Do not add components where those instructions prohibit them.',
+            'Output each UI component directly using its documented self-contained @@UI_COMPONENT JSON syntax, without code fences.',
+            'Select each component by its configured identifier and provide variable data only through its declared data fields. Configured actions and their properties are resolved by the runtime and must not be generated or overridden.',
+            'A UI component is a complete output element. Never use it as a URL or Markdown link destination, wrap it in Markdown link syntax or HTML, or duplicate content it renders itself.',
+            'Follow the applicable output instructions for link format and placement. Do not assume that links must always use either Markdown or a UI component.',
+            'Definition headings, boundary markers, names, schemas and syntax documentation are internal and must not appear in the answer.',
+        ] : [];
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function build(Context $context, PipelineStepConfigurationInterface $step): array
     {
-        $instructions = $this->buildInstructions($context, $step);
-        if ($instructions === '') {
+        $section = $this->buildInstructions($context, $step);
+        if ($section === null) {
             return [];
         }
 
-        return [new PromptSection('Available UI Components', $instructions, 80)];
+        return [$section];
     }
-
 
     /**
      * Builds the component instructions included in the current LLM prompt.
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
-     * @return string Prompt instructions.
+     * @return \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection|null Prompt section.
      */
-    private function buildInstructions(Context $context, PipelineStepConfigurationInterface $step): string
+    private function buildInstructions(Context $context, PipelineStepConfigurationInterface $step): ?PromptSection
     {
         $definitions = $this->provider->getDefinitions($context, $step);
         if ($definitions === []) {
-            return '';
+            return null;
         }
 
-        $lines = [
-            'Use the following UI components when they improve the answer.',
-            'Never output HTML, JavaScript, Markdown-links for a UI component.',
-            'Never use Markdown-links at all',
-            'Use the self-contained @@UI_COMPONENT JSON syntax exactly as documented below.',
-            'The component renders its own label and link; do not repeat the label as Markdown.',
-            'Correct: Read more at @@UI_COMPONENT {"type":"link","data":{"label":"Product details","url":"/products.html"}}.',
-        ];
-
+        $lines = $this->getGeneralInstructions($step->getType());
+        $sections = [];
         foreach ($definitions as $definition) {
-            $lines[] = '';
-            $lines[] = 'Component: ' . $definition->identifier;
-            $lines[] = 'Name: ' . ($definition->title !== '' ? $definition->title : $definition->identifier);
+            $componentLines = [];
+            $componentLines[] = 'Name: ' . ($definition->title !== '' ? $definition->title : $definition->identifier);
             if ($definition->description !== '') {
-                $lines[] = 'Purpose: ' . $definition->description;
+                $componentLines[] = 'Purpose: ' . $definition->description;
             }
             if ($definition->placeholders !== []) {
-                $lines[] = 'Placeholders: ' . implode(', ', $definition->placeholders);
+                $componentLines[] = 'Placeholders: ' . implode(', ', $definition->placeholders);
             }
             if ($definition->dataSchema !== []) {
-                $lines[] = 'Data schema: ' . json_encode($definition->dataSchema, JSON_UNESCAPED_SLASHES);
+                $componentLines[] = 'Data schema: ' . json_encode($definition->dataSchema, JSON_UNESCAPED_SLASHES);
             }
-            if ($definition->actions !== []) {
-                $lines[] = 'Actions:';
-                foreach ($definition->actions as $action) {
-                    $label = $action->label !== '' ? $action->label : $action->identifier;
-                    $lines[] = '- ' . $action->identifier . ': label "' . $label . '"; prompt "' . $action->promptTemplate . '"';
-                }
-            }
-            $lines[] = 'Syntax: @@UI_COMPONENT {"type":"' . $definition->identifier . '","data":{...}}';
+            $componentType = $definition->type !== '' ? $definition->type : $definition->identifier;
+            $usage = $definition->usage !== ''
+                ? str_replace(
+                    ['{type}', '{identifier}'],
+                    [$componentType, $definition->identifier],
+                    $definition->usage,
+                )
+                : '@@UI_COMPONENT {"type":"' . $componentType . '","identifier":"' . $definition->identifier . '","data":{...}}';
+            $componentLines[] = 'Usage: ' . $usage;
+            $sections[] = new PromptSection(
+                'UI COMPONENT: ' . $definition->identifier,
+                implode("\n", $componentLines),
+            );
         }
 
-        return implode("\n", $lines);
+        return new PromptSection('Available UI Components', implode("\n", $lines), 80, $sections);
     }
 }

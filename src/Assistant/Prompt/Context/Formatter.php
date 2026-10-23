@@ -21,7 +21,6 @@ declare(strict_types=1);
 
 namespace Madj2k\AiCore\Assistant\Prompt\Context;
 
-use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 
 /**
  * Class Formatter
@@ -35,6 +34,14 @@ use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
  */
 final class Formatter
 {
+
+    public const TOP_LEVEL = 'top-level';
+
+    public const SUB_SECTION = 'sub-section';
+
+    public const NESTED = 'nested';
+
+
     /**
      * Formats prompt sections into a plain-text prompt context.
      *
@@ -50,9 +57,84 @@ final class Formatter
                 continue;
             }
 
-            $parts[] = $section->toText();
+            $parts[] = $this->formatSection($section);
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * Formats one prompt section and its nested sections recursively.
+     *
+     * @param \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection $section Prompt section.
+     * @param int $depth Nesting depth.
+     * @return string Formatted section.
+     */
+    private function formatSection(PromptSection $section, int $depth = 0): string
+    {
+        $parts = [];
+        if (trim($section->content) !== '') {
+            $parts[] = trim($section->content);
+        }
+
+        foreach ($section->sections as $nestedSection) {
+            if (!$nestedSection instanceof PromptSection || $nestedSection->isEmpty()) {
+                continue;
+            }
+            $parts[] = $this->formatSection($nestedSection, $depth + 1);
+        }
+
+        return $this->boundary(
+            $section->title,
+            implode("\n\n", $parts),
+            match ($depth) {
+                0 => self::TOP_LEVEL,
+                1 => self::SUB_SECTION,
+                default => self::NESTED,
+            },
+        );
+    }
+
+    /**
+     * Formats one named prompt boundary.
+     *
+     * @param string $name Boundary name.
+     * @param string $content Boundary content.
+     * @param string $level Boundary level.
+     * @return string Formatted boundary.
+     */
+    public function boundary(string $name, string $content = '', string $level = self::TOP_LEVEL): string
+    {
+        $name = trim($name);
+        $content = trim($content);
+        if ($name === '') {
+            return $content;
+        }
+
+        $prefix = match ($level) {
+            self::SUB_SECTION => '====',
+            self::NESTED => '-----',
+            default => '####',
+        };
+        $lines = [$prefix . ' BEGIN ' . $name . ' ' . $prefix];
+        if ($content !== '') {
+            $lines[] = $content;
+        }
+        $lines[] = $prefix . ' END ' . $name . ' ' . $prefix;
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Formats a nested typed entry such as a presentation rule or retrieval.
+     *
+     * @param string $type
+     * @param string $identifier
+     * @param string $content
+     * @return string
+     */
+    public function entry(string $type, string $identifier, string $content): string
+    {
+        return $this->boundary(trim($type) . ': ' . trim($identifier), $content, self::NESTED);
     }
 }
