@@ -33,6 +33,7 @@ use Madj2k\AiCore\Exception\IndexingException;
 use Madj2k\AiCore\Indexing\Configuration\IndexingConfigurationInterface;
 use Madj2k\AiCore\Indexing\DTO\IndexableDocument;
 use Madj2k\AiCore\Indexing\Identity\SourceIdentityGenerator;
+use Madj2k\AiCore\Indexing\Enum\ChunkingStrategy;
 
 /**
  * Class VectorDocumentIndexer
@@ -233,9 +234,30 @@ final readonly class VectorDocumentIndexer
         IndexingConfigurationInterface $configuration,
         IndexableDocument $document,
     ): array {
+        $chunkSize = $this->positiveOrNull($configuration->getChunkSize());
+
+        if ($configuration->getChunkingStrategy() === ChunkingStrategy::Atomic) {
+            $content = $document->getContent();
+            if ($content === '') {
+                return [];
+            }
+
+            $maximum = $chunkSize ?? 1200;
+            if (mb_strlen($content) > $maximum) {
+                throw new IndexingException(sprintf(
+                    'Atomic chunking cannot index source "%s": content has %d characters, maximum is %d.',
+                    $document->getMetadata()->getSourceIdentifier(),
+                    mb_strlen($content),
+                    $maximum,
+                ), 1781002004);
+            }
+
+            return [$content];
+        }
+
         return $this->textChunker->chunk(
             $document->getContent(),
-            $this->positiveOrNull($configuration->getChunkSize()),
+            $chunkSize,
             $this->positiveOrNull($configuration->getChunkOverlap()),
             $this->positiveOrNull($configuration->getMaxChunks()),
             $this->positiveOrNull($configuration->getMinChunkChars()),

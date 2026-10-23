@@ -50,7 +50,7 @@ final class PlainAdapter implements AdapterInterface
      */
     public function getSupportedExtensions(): array
     {
-        return ['txt', 'text', 'md', 'markdown', 'csv'];
+        return ['txt', 'text', 'csv'];
     }
 
 

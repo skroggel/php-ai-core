@@ -79,6 +79,10 @@ abstract class AbstractIndexer implements IndexerInterface
             return false;
         }
 
+        // Resolve the strategy before unchanged-source skipping so invalid
+        // persisted configuration is reported instead of hidden by a skip.
+        $configuration->getChunkingStrategy();
+
         // get collection
         $collection = $this->vectorDocumentIndexer->resolveCollection($configuration, $request->getCollection());
         if ($collection === '') {

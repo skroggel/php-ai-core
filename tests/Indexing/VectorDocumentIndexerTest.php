@@ -20,6 +20,7 @@ use Madj2k\AiCore\Exception\IndexingException;
 use Madj2k\AiCore\Indexing\Configuration\IndexingConfigurationInterface;
 use Madj2k\AiCore\Indexing\DTO\IndexableDocument;
 use Madj2k\AiCore\Indexing\Identity\SourceIdentityGenerator;
+use Madj2k\AiCore\Indexing\Enum\ChunkingStrategy;
 use Madj2k\AiCore\Indexing\TextChunker;
 use Madj2k\AiCore\Indexing\VectorDocumentIndexer;
 use Madj2k\AiCore\Tests\Support\RecordingVectorStoreConnector;
@@ -116,6 +117,22 @@ final class VectorDocumentIndexerTest extends TestCase
         $indexer->index($configuration, $document, 'documents');
     }
 
+    public function testAtomicChunkingKeepsCompleteTextAndRejectsOversizedDocumentsBeforeEmbedding(): void
+    {
+        $vectorConnector = new RecordingVectorStoreConnector();
+        [$indexer, $configuration, $document] = $this->createFixture(
+            $vectorConnector,
+            embeddings: [[1.0, 2.0]],
+            strategy: ChunkingStrategy::Atomic,
+        );
+
+        $this->expectException(IndexingException::class);
+        $this->expectExceptionMessage('Atomic chunking cannot index');
+
+        $indexer->index($configuration, $document, 'documents', false, ['existing-hash']);
+        self::fail('The oversized atomic document must fail before embedding.');
+    }
+
     /**
      * @param array<int, array<int, float>> $embeddings
      * @return array{VectorDocumentIndexer,IndexingConfigurationInterface,IndexableDocument,SourceIdentityGenerator}
@@ -124,6 +141,7 @@ final class VectorDocumentIndexerTest extends TestCase
         RecordingVectorStoreConnector $vectorConnector,
         array $embeddings = [[1.0, 2.0], [1.0, 2.0]],
         int $embeddingDimension = 2,
+        ChunkingStrategy $strategy = ChunkingStrategy::Fixed,
     ): array
     {
         $aiConnector = new class($embeddings) implements AiConnectorInterface {
@@ -156,15 +174,17 @@ final class VectorDocumentIndexerTest extends TestCase
             connectorIdentifier: 'test-vector',
             distance: 'Dot',
         );
-        $configuration = new class($aiConnection, $vectorConnection) implements IndexingConfigurationInterface {
+        $configuration = new class($aiConnection, $vectorConnection, $strategy) implements IndexingConfigurationInterface {
             public function __construct(
                 private AiConnectionConfigurationInterface $ai,
                 private VectorStoreConnectionConfigurationInterface $vector,
+                private ChunkingStrategy $strategy,
             ) {}
             public function getCollection(): string { return 'documents'; }
             public function getAiConnection(): ?AiConnectionConfigurationInterface { return $this->ai; }
             public function getVectorStoreConnection(): ?VectorStoreConnectionConfigurationInterface { return $this->vector; }
             public function getChunkSize(): int { return 5; }
+            public function getChunkingStrategy(): ChunkingStrategy { return $this->strategy; }
             public function getChunkOverlap(): int { return 1; }
             public function getMaxChunks(): int { return 0; }
             public function getMinChunkChars(): int { return 1; }

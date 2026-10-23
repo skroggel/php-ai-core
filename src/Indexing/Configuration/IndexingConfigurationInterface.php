@@ -23,6 +23,7 @@ namespace Madj2k\AiCore\Indexing\Configuration;
 
 use Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface;
 use Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface;
+use Madj2k\AiCore\Indexing\Enum\ChunkingStrategy;
 
 /**
  * Interface IndexingConfigurationInterface
@@ -66,6 +67,13 @@ interface IndexingConfigurationInterface
      * @return int
      */
     public function getChunkSize(): int;
+
+    /**
+     * Returns the configured chunking strategy.
+     *
+     * @return \Madj2k\AiCore\Indexing\Enum\ChunkingStrategy Chunking strategy.
+     */
+    public function getChunkingStrategy(): ChunkingStrategy;
 
 
     /**
