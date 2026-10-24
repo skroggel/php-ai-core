@@ -36,6 +36,8 @@ use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
 use Madj2k\AiCore\Connection\Resolver\VectorStoreConnectorResolver;
 use Madj2k\AiCore\Connection\VectorStore\Filter\FilterValueResolverInterface;
 use Madj2k\AiCore\Connection\VectorStore\Filter\IdentityFilterValueResolver;
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup;
 
 /**
  * Class RetrieverProcessor
@@ -136,6 +138,7 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
             ? $step->getRetrievalFilter()
             : null;
         $filter = ($this->filterValueResolver ?? new IdentityFilterValueResolver())->resolve($filter, $context);
+        $filter = $this->mergeIntentPayloadFilter($context, $filter);
 
         $rows = $this->vectorStoreConnectorResolver
             ->get($vectorStoreConnection->getConnectorIdentifier())
@@ -195,6 +198,41 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
             $documents,
         );
 
+    }
+
+    /**
+     * Merges a selector payload filter with the static retriever filter.
+     *
+     * Dynamic intent filters must apply to every retriever allowed by the
+     * retrieval plan. Static conditions remain active and are combined with
+     * the dynamic conditions using a logical AND.
+     *
+     * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
+     * @param \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null $filter Static filter.
+     * @return \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null Combined filter.
+     */
+    private function mergeIntentPayloadFilter(Context $context, ?FilterGroup $filter): ?FilterGroup
+    {
+        $payloadFilter = $context->getRetrievalPlan()->payloadFilter;
+        $payloadRetrievers = $context->getRetrievalPlan()->payloadRetrievers;
+        if ($payloadRetrievers !== []
+            && !in_array($step->getRetrievalIdentifier(), $payloadRetrievers, true)
+        ) {
+            return $filter;
+        }
+
+        if ($payloadFilter === null || $payloadFilter->isEmpty()) {
+            return $filter;
+        }
+
+        if ($filter === null || $filter->isEmpty()) {
+            return $payloadFilter;
+        }
+
+        return new FilterGroup(
+            FilterConjunction::And,
+            array_merge($filter->conditions, $payloadFilter->conditions),
+        );
     }
 
 

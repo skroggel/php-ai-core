@@ -17,6 +17,8 @@ use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRule;
 use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRuleProviderInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\Builder\IntentSelectionContextBuilder;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\Llm\IntentSelectionProcessor;
+use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Tests\Support\PipelineStep;
 use PHPUnit\Framework\TestCase;
 
@@ -61,10 +63,67 @@ final class IntentSelectionTest extends TestCase
 
         self::assertStringContainsString('"retrieval":{"mode":"all","targets":[]}', $content);
         self::assertStringContainsString('"presentationRules":{"mode":"all","rules":[]}', $content);
-        self::assertStringContainsString('For mode all or none, the corresponding targets or rules array must be empty.', $content);
-        self::assertStringContainsString('If there is no explicit reason to restrict either area, return exactly:', $content);
+        self::assertStringContainsString('For mode all or none, the corresponding list must be empty.', $content);
+        self::assertStringNotContainsString('If no restriction or payload value is needed', $content);
         self::assertStringContainsString('source', $content);
         self::assertStringContainsString('rule', $content);
+    }
+
+    public function testPayloadOutputAddsConfiguredFieldAndValueContract(): void
+    {
+        $targetProvider = new class implements RetrievalTargetProviderInterface {
+            public function getTargets(Context $context, \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step): array
+            {
+                return [];
+            }
+        };
+        $ruleProvider = new class implements PresentationRuleProviderInterface {
+            public function getAll(): array
+            {
+                return [];
+            }
+
+            public function getRules(Context $context, \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step): array
+            {
+                return [];
+            }
+        };
+        $builder = new IntentSelectionContextBuilder($targetProvider, $ruleProvider);
+        $step = new PipelineStep(
+            type: \Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType::IntentSelector,
+            intentSelectionOutputTypes: [IntentSelectionOutputType::RetrieverPayload],
+            intentSelectionPayloadField: 'meta.additional.category_ids',
+            intentSelectionPayloadConjunction: FilterConjunction::Or,
+        );
+
+        $content = $builder->build($this->context(), $step)[0]->content;
+
+        self::assertStringContainsString('"retrieverPayload":{"values":[]}', $content);
+        self::assertStringContainsString('meta.additional.category_ids', $content);
+        self::assertStringContainsString('The values are matched against payload field', $content);
+        self::assertStringNotContainsString('"retrieval":{"mode":"all"', $content);
+        self::assertStringNotContainsString('"presentationRules":{"mode":"all"', $content);
+    }
+
+    public function testPayloadFilterUsesConfiguredConjunction(): void
+    {
+        $method = new \ReflectionMethod(IntentSelectionProcessor::class, 'createPayloadFilter');
+        $method->setAccessible(true);
+        $processor = $this->newInstanceWithoutConstructor();
+        $step = new PipelineStep(
+            intentSelectionPayloadField: 'meta.additional.category_ids',
+            intentSelectionPayloadConjunction: FilterConjunction::Or,
+        );
+
+        $filter = $method->invoke($processor, [
+            'retrieverPayload' => ['values' => [12, 15]],
+        ], $step);
+
+        self::assertNotNull($filter);
+        self::assertSame(FilterConjunction::Or, $filter->conjunction);
+        self::assertCount(2, $filter->conditions);
+        self::assertSame('meta.additional.category_ids', $filter->conditions[0]->field);
+        self::assertSame([12], $filter->conditions[0]->value);
     }
 
     public function testMalformedJsonIsRejectedWithoutASelection(): void

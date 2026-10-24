@@ -25,6 +25,7 @@ use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalTargetProviderInterface;
 use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRuleProviderInterface;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
+use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\DTO\PromptRole;
 
@@ -68,16 +69,46 @@ final class IntentSelectionContextBuilder extends AbstractContextBuilder
      */
     public function getGeneralInstructions(AssistantPipelineProcessorType $type): array
     {
-        return $this->supports($type) ? [
-            'Select retrieval targets and presentation rules based on the original user intent. Do not answer the query.',
-            'Apply explicit exclusions before general inclusion rules.',
-            'Return only JSON in this exact format: {"retrieval":{"mode":"all","targets":[]},"presentationRules":{"mode":"all","rules":[]},"metadata":{}}.',
-            'Each area supports mode all, selected, all_except or none. Use only available identifiers; default both areas to all.',
-            'For mode all or none, the corresponding targets or rules array must be empty. Lists are used only with selected or all_except.',
-            'If there is no explicit reason to restrict either area, return exactly: {"retrieval":{"mode":"all","targets":[]},"presentationRules":{"mode":"all","rules":[]},"metadata":{}}.',
-            'Never combine mode all or none with non-empty targets or rules arrays.',
-            'Ensure both modes and lists are consistent. Metadata is optional.',
-        ] : [];
+        if (!$this->supports($type)) {
+            return [];
+        }
+
+        $outputs = $this->resolveOutputTypes(null);
+
+        return $this->buildGeneralInstructions($outputs);
+    }
+
+    /**
+     * Builds general selector instructions for the configured output areas.
+     *
+     * @param array<int,\Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType> $outputs Output types.
+     * @return array<int,string> Prompt instructions.
+     */
+    private function buildGeneralInstructions(array $outputs): array
+    {
+        $instructions = [
+            'Determine the user intent for the original query. Do not answer the query.',
+            'Only produce the configured JSON object. Do not add Markdown fences or explanatory text.',
+        ];
+
+        if (in_array(IntentSelectionOutputType::Retriever, $outputs, true)) {
+            $instructions[] = 'Select retrieval targets only when the intent requires a restriction; otherwise use mode all.';
+            $instructions[] = 'The retrieval area supports mode all, selected, all_except or none. Use only available retrieval identifiers.';
+        }
+
+        if (in_array(IntentSelectionOutputType::PresentationRules, $outputs, true)) {
+            $instructions[] = 'Select presentation rules only when the intent requires a restriction; otherwise use mode all.';
+            $instructions[] = 'The presentationRules area supports mode all, selected, all_except or none. Use only available rule identifiers.';
+        }
+
+        if (in_array(IntentSelectionOutputType::RetrieverPayload, $outputs, true)) {
+            $instructions[] = $this->buildPayloadInstructions(null);
+        }
+
+        $instructions[] = 'For mode all or none, the corresponding list must be empty.';
+        $instructions[] = 'Return this JSON structure: ' . $this->buildOutputContract($outputs);
+
+        return $instructions;
     }
 
     /**
@@ -85,27 +116,117 @@ final class IntentSelectionContextBuilder extends AbstractContextBuilder
      */
     public function build(Context $context, PipelineStepConfigurationInterface $step): array
     {
-        $lines = $this->getGeneralInstructions($step->getType());
+        $outputs = $this->resolveOutputTypes($step);
+        $lines = $this->supports($step->getType())
+            ? $this->buildGeneralInstructions($outputs)
+            : [];
 
-        foreach ($this->targetProvider->getTargets($context, $step) as $target) {
-            $lines[] = sprintf('- %s: %s', $target->identifier, $target->description !== '' ? $target->description : $target->title);
+        if (in_array(IntentSelectionOutputType::Retriever, $outputs, true)) {
+            foreach ($this->targetProvider->getTargets($context, $step) as $target) {
+                $lines[] = sprintf(
+                    '- %s: %s',
+                    $target->identifier,
+                    $target->description !== '' ? $target->description : $target->title,
+                );
+            }
         }
-        $lines[] = '';
-        $lines[] = 'Available presentation rules:';
-        foreach ($this->presentationRuleProvider->getAll() as $rule) {
-            $lines[] = sprintf('- %s: %s', $rule->identifier, $rule->title !== '' ? $rule->title : $rule->content);
+
+        if (in_array(IntentSelectionOutputType::PresentationRules, $outputs, true)) {
+            $lines[] = '';
+            $lines[] = 'Available presentation rules:';
+            foreach ($this->presentationRuleProvider->getAll() as $rule) {
+                $lines[] = sprintf(
+                    '- %s: %s',
+                    $rule->identifier,
+                    $rule->title !== '' ? $rule->title : $rule->content,
+                );
+            }
         }
-        if (method_exists($step, 'getIntentSelectionInstructions') && $step->getIntentSelectionInstructions() !== '') {
+
+        if (in_array(IntentSelectionOutputType::RetrieverPayload, $outputs, true)) {
+            $lines[] = '';
+            $lines[] = $this->buildPayloadInstructions($step);
+        }
+        if ($step->getIntentSelectionInstructions() !== '') {
             $lines[] = '';
             $lines[] = 'Additional selection rules:';
             $lines[] = $step->getIntentSelectionInstructions();
         }
-        if (method_exists($step, 'getIntentSelectionMetadata') && $step->getIntentSelectionMetadata() !== '') {
+        if ($step->getIntentSelectionMetadata() !== '') {
             $lines[] = '';
             $lines[] = 'Return metadata according to this schema:';
             $lines[] = $step->getIntentSelectionMetadata();
         }
 
         return [new PromptSection('Available Intent Selections', implode("\n", $lines), 70)];
+    }
+
+    /**
+     * Resolves configured output types with the legacy default.
+     *
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface|null $step Pipeline step.
+     * @return array<int,\Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType> Output types.
+     */
+    private function resolveOutputTypes(?PipelineStepConfigurationInterface $step): array
+    {
+        if ($step === null) {
+            return [IntentSelectionOutputType::Retriever, IntentSelectionOutputType::PresentationRules];
+        }
+
+        $types = $step->getIntentSelectionOutputTypes();
+        if (!is_array($types) || $types === []) {
+            return [IntentSelectionOutputType::Retriever, IntentSelectionOutputType::PresentationRules];
+        }
+
+        return array_values(array_filter(
+            $types,
+            static fn (mixed $type): bool => $type instanceof IntentSelectionOutputType,
+        ));
+    }
+
+    /**
+     * Builds the payload filtering instructions.
+     *
+     * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface|null $step Pipeline step.
+     * @return string Payload filtering instruction.
+     */
+    private function buildPayloadInstructions(?PipelineStepConfigurationInterface $step): string
+    {
+        $field = 'the configured payload field';
+
+        if ($step !== null) {
+            $configuredField = trim((string)$step->getIntentSelectionPayloadField());
+            if ($configuredField !== '') {
+                $field = '`' . $configuredField . '`';
+            }
+        }
+
+        return sprintf(
+            'Return retriever payload values in "retrieverPayload":{"values":[...]}. The values are matched against payload field %s.',
+            $field,
+        );
+    }
+
+    /**
+     * Builds the exact JSON contract for the selected output areas.
+     *
+     * @param array<int,\Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType> $outputs Output types.
+     * @return string JSON contract.
+     */
+    private function buildOutputContract(array $outputs): string
+    {
+        $contract = [];
+        if (in_array(IntentSelectionOutputType::Retriever, $outputs, true)) {
+            $contract['retrieval'] = ['mode' => 'all', 'targets' => []];
+        }
+        if (in_array(IntentSelectionOutputType::PresentationRules, $outputs, true)) {
+            $contract['presentationRules'] = ['mode' => 'all', 'rules' => []];
+        }
+        if (in_array(IntentSelectionOutputType::RetrieverPayload, $outputs, true)) {
+            $contract['retrieverPayload'] = ['values' => []];
+        }
+        $contract['metadata'] = new \stdClass();
+
+        return (string)json_encode($contract, JSON_UNESCAPED_SLASHES);
     }
 }

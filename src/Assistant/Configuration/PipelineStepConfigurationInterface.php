@@ -25,7 +25,9 @@ use Madj2k\AiCore\Assistant\Enum\AssistantPipelineFailureStrategy;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
+use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
 use Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface;
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 
 /**
  * Interface PipelineStepConfigurationInterface
@@ -157,6 +159,56 @@ interface PipelineStepConfigurationInterface
      * @return array<int,string>
      */
     public function getPresentationRuleIdentifiers(): array;
+
+
+    /**
+     * Returns the output areas controlled by the intent selector.
+     *
+     * @return array<int,\Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType> Output areas.
+     */
+    public function getIntentSelectionOutputTypes(): array;
+
+
+    /**
+     * Returns the payload field path used for dynamic retriever filtering.
+     *
+     * @return string Payload field path.
+     */
+    public function getIntentSelectionPayloadField(): string;
+
+
+    /**
+     * Returns retriever identifiers that receive the dynamic payload filter.
+     *
+     * An empty array means all retrievers allowed by the retrieval plan.
+     *
+     * @return array<int,string> Retriever identifiers.
+     */
+    public function getIntentSelectionPayloadRetrievers(): array;
+
+
+    /**
+     * Returns the conjunction used for multiple dynamic payload values.
+     *
+     * @return \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction Payload conjunction.
+     */
+    public function getIntentSelectionPayloadConjunction(): FilterConjunction;
+
+
+    /**
+     * Returns additional intent selector instructions.
+     *
+     * @return string Additional instructions.
+     */
+    public function getIntentSelectionInstructions(): string;
+
+
+    /**
+     * Returns the optional intent selector metadata schema.
+     *
+     * @return string Metadata schema.
+     */
+    public function getIntentSelectionMetadata(): string;
 
 
     /**

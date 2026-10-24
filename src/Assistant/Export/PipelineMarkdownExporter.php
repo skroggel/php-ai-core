@@ -247,7 +247,7 @@ final class PipelineMarkdownExporter
                         $lines[] = '- `' . $targetStep->getRetrievalIdentifier() . '` - ' . $this->value($targetStep->getTitle());
                     }
                 }
-                if (method_exists($step, 'getIntentSelectionMetadata') && $step->getIntentSelectionMetadata() !== '') {
+                if ($step->getIntentSelectionMetadata() !== '') {
                     $lines[] = '';
                     $lines[] = 'Configured metadata schema:';
                     $lines[] = '```json';

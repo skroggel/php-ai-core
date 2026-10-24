@@ -22,19 +22,27 @@ processor type.
 
 ### Intent selection contract
 
-`IntentSelectionProcessor` expects JSON with two independent selection areas:
+`IntentSelectionProcessor` accepts independently configured output areas:
 
 ```json
 {
   "retrieval": {"mode": "all", "targets": []},
   "presentationRules": {"mode": "all", "rules": []},
+  "retrieverPayload": {"values": []},
   "metadata": {}
 }
 ```
 
-Both areas support `all`, `selected`, `all_except` and `none`. Missing or
-invalid areas safely default to `all`; `metadata` is optional. The intent
-context explicitly lists all available target and rule identifiers.
+The `retrieval` and `presentationRules` areas support `all`, `selected`,
+`all_except` and `none`. `retrieverPayload` contains only `values`; its field
+path, target retrievers and `and`/`or` conjunction are supplied by pipeline
+configuration. The model supplies values, not filter logic.
+
+Missing or invalid areas retain the configured default. In an empty legacy
+configuration, retrieval and presentation-rule selection are enabled and
+payload filtering is disabled. The intent context lists the available target
+and rule identifiers and, when payload filtering is enabled, the configured
+payload field path.
 
 ## Processor types
 

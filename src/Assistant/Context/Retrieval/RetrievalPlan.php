@@ -21,6 +21,8 @@ declare(strict_types=1);
 
 namespace Madj2k\AiCore\Assistant\Context\Retrieval;
 
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup;
+
 /**
  * Class RetrievalPlan
  *
@@ -41,11 +43,15 @@ final readonly class RetrievalPlan
      * @param string $mode Plan mode: all, selected, all_except or none.
      * @param array<int,string> $targets Selected target identifiers.
      * @param array<string,mixed> $metadata Selector metadata.
+     * @param \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null $payloadFilter Dynamic payload filter.
+     * @param array<int,string> $payloadRetrievers Retriever identifiers targeted by the payload filter.
      */
     public function __construct(
         public string $mode = 'all',
         public array $targets = [],
         public array $metadata = [],
+        public ?FilterGroup $payloadFilter = null,
+        public array $payloadRetrievers = [],
     ) {
     }
 

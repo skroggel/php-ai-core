@@ -8,6 +8,8 @@ use Madj2k\AiCore\Assistant\Enum\AssistantPipelineFailureStrategy;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
+use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
+use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface;
 
 final readonly class PipelineStep implements PipelineStepConfigurationInterface
@@ -40,6 +42,9 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         private string $retrievalCollection = '',
         private array $presentationRuleIdentifiers = [],
         private string $retrievalIdentifier = '',
+        private array $intentSelectionOutputTypes = [],
+        private string $intentSelectionPayloadField = '',
+        private FilterConjunction $intentSelectionPayloadConjunction = FilterConjunction::And,
     ) {
     }
 
@@ -48,6 +53,14 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
     public function getType(): AssistantPipelineProcessorType { return $this->type; }
     public function getProcessorIdentifier(): string { return $this->identifier; }
     public function getRetrievalIdentifier(): string { return $this->retrievalIdentifier; }
+    /** @return array<int,IntentSelectionOutputType> */
+    public function getIntentSelectionOutputTypes(): array { return $this->intentSelectionOutputTypes; }
+    public function getIntentSelectionPayloadField(): string { return $this->intentSelectionPayloadField; }
+    /** @return array<int,string> */
+    public function getIntentSelectionPayloadRetrievers(): array { return []; }
+    public function getIntentSelectionPayloadConjunction(): FilterConjunction { return $this->intentSelectionPayloadConjunction; }
+    public function getIntentSelectionInstructions(): string { return ''; }
+    public function getIntentSelectionMetadata(): string { return ''; }
     public function getStage(): AssistantPipelineStage { return $this->stage; }
     public function getIncludeIdentityPrompt(): bool { return $this->includeIdentity; }
     public function getIncludeBehaviorRules(): bool { return $this->includeBehavior; }
