@@ -45,6 +45,9 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
      * @param array<string, mixed> $additionalOptions Provider-specific options.
      * @param string $connectorIdentifier Registered connector identifier.
      * @param int $embeddingDimension Expected number of dimensions produced by the embedding model.
+     * @param string $embeddingBaseUrl Optional complete embedding endpoint URL.
+     * @param bool $baseUrlNoExtend Do not append the provider resource path to the base URL.
+     * @param bool $embeddingBaseUrlNoExtend Do not append the embedding resource path to the embedding URL.
      */
     public function __construct(
         private string $apiKey,
@@ -58,6 +61,9 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
         private array $additionalOptions = [],
         private string $connectorIdentifier = 'openai',
         private int $embeddingDimension = 1536,
+        private string $embeddingBaseUrl = '',
+        private bool $baseUrlNoExtend = false,
+        private bool $embeddingBaseUrlNoExtend = false,
     ) {}
 
     /** @inheritDoc */
@@ -76,6 +82,36 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
     public function getBaseUrl(): string
     {
         return rtrim($this->baseUrl, '/');
+    }
+
+    /**
+     * Returns whether the base URL is already a complete request endpoint.
+     *
+     * @return bool Complete URL flag.
+     */
+    public function isBaseUrlNoExtend(): bool
+    {
+        return $this->baseUrlNoExtend;
+    }
+
+    /**
+     * Returns the optional complete embedding endpoint URL.
+     *
+     * @return string Complete embedding endpoint URL or an empty string.
+     */
+    public function getEmbeddingBaseUrl(): string
+    {
+        return rtrim($this->embeddingBaseUrl, '/');
+    }
+
+    /**
+     * Returns whether the embedding URL is already a complete request endpoint.
+     *
+     * @return bool Complete embedding URL flag.
+     */
+    public function isEmbeddingBaseUrlNoExtend(): bool
+    {
+        return $this->embeddingBaseUrlNoExtend;
     }
 
     /** @inheritDoc */

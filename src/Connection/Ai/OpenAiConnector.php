@@ -73,7 +73,7 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
         ?RetryPolicy $retryPolicy = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
-        $this->clientFactory = $clientFactory ?? new OpenAiClientFactory();
+        $this->clientFactory = $clientFactory ?? new OpenAiClientFactory($this->logger);
         $this->retryPolicy = $retryPolicy ?? new RetryPolicy();
         $this->exceptionClassifier = new ExceptionClassifier();
         $this->retryExecutor = new RetryExecutor(
@@ -105,7 +105,7 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             $response = $this->retryExecutor->execute(
                 'openai',
                 'embed',
-                fn (): object => $this->createClient($connection)->embeddings()->create(array_merge([
+                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create(array_merge([
                     'model' => $configuredModel,
                     'input' => $request->getText(),
                     'temperature' => $this->resolveEmbeddingTemperature($connection, $request),
@@ -157,7 +157,7 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             $response = $this->retryExecutor->execute(
                 'openai',
                 'embedBatch',
-                fn (): object => $this->createClient($connection)->embeddings()->create(array_merge([
+                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create(array_merge([
                     'model' => $configuredModel,
                     'input' => $texts,
                     'temperature' => $this->resolveEmbeddingTemperature($connection, $firstRequest),
@@ -193,7 +193,7 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
                 'streamChat',
                 function () use ($connection, $payload, $onData, $streamState): void {
                     /** @var iterable<object> $stream */
-                    $stream = $this->createClient($connection)->chat()->createStreamed($payload);
+                    $stream = $this->createChatClient($connection)->chat()->createStreamed($payload);
                     foreach ($stream as $event) {
                         if (isset($event->choices[0]->delta->content)) {
                             $streamState->emittedData = true;
@@ -228,7 +228,7 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             $response = $this->retryExecutor->execute(
                 'openai',
                 'chat',
-                fn (): object => $this->createClient($connection)->chat()->create(
+                fn (): object => $this->createChatClient($connection)->chat()->create(
                     $this->buildChatPayload($connection, $request),
                 ),
             );
@@ -258,7 +258,11 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
      * @param \Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface $connection AI connection.
      * @return \OpenAI\Contracts\ClientContract OpenAI client.
      */
-    protected function createClient(AiConnectionConfigurationInterface $connection): ClientContract
+    protected function createClient(
+        AiConnectionConfigurationInterface $connection,
+        ?string $endpointOverride = null,
+        ?string $baseUrlOverride = null,
+    ): ClientContract
     {
         $cacheKey = sha1(implode('|', [
             $connection->getApiKey(),
@@ -268,6 +272,8 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             method_exists($connection, 'getAuthentication') ? (string)$connection->getAuthentication() : 'api_key',
             method_exists($connection, 'getOauthTokenEndpoint') ? (string)$connection->getOauthTokenEndpoint() : '',
             method_exists($connection, 'getOauthClientId') ? (string)$connection->getOauthClientId() : '',
+            trim($endpointOverride ?? ''),
+            trim($baseUrlOverride ?? ''),
         ]));
 
         if (isset($this->clients[$cacheKey])) {
@@ -280,9 +286,51 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             throw new ApiException('Missing OpenAI API key in selected AI connection.', 1780573101);
         }
 
-        $this->clients[$cacheKey] = $this->clientFactory->create($connection, $this->retryPolicy);
+        $this->clients[$cacheKey] = $this->clientFactory->create(
+            $connection,
+            $this->retryPolicy,
+            $endpointOverride,
+            $baseUrlOverride,
+        );
 
         return $this->clients[$cacheKey];
+    }
+
+    /**
+     * Creates the client used for embedding requests.
+     *
+     * @param \Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface $connection AI connection.
+     * @return \OpenAI\Contracts\ClientContract OpenAI client.
+     */
+    protected function createEmbeddingClient(AiConnectionConfigurationInterface $connection): ClientContract
+    {
+        $embeddingUrl = $connection->getEmbeddingBaseUrl();
+        if ($embeddingUrl === '') {
+            return $this->createClient(
+                $connection,
+                $connection->isBaseUrlNoExtend() ? $connection->getBaseUrl() : null,
+            );
+        }
+
+        if ($connection->isEmbeddingBaseUrlNoExtend()) {
+            return $this->createClient($connection, $embeddingUrl);
+        }
+
+        return $this->createClient($connection, null, $embeddingUrl);
+    }
+
+    /**
+     * Creates the client used for chat requests.
+     *
+     * @param \Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface $connection AI connection.
+     * @return \OpenAI\Contracts\ClientContract OpenAI client.
+     */
+    protected function createChatClient(AiConnectionConfigurationInterface $connection): ClientContract
+    {
+        return $this->createClient(
+            $connection,
+            $connection->isBaseUrlNoExtend() ? $connection->getBaseUrl() : null,
+        );
     }
 
 

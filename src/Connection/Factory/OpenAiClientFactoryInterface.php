@@ -43,10 +43,14 @@ interface OpenAiClientFactoryInterface
      *
      * @param \Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface $connection
      * @param \Madj2k\AiCore\Connection\Resilience\RetryPolicy $policy
+     * @param string|null $endpointOverride Complete request endpoint override.
+     * @param string|null $baseUrlOverride Request base URL override.
      * @return \OpenAI\Contracts\ClientContract
      */
     public function create(
         AiConnectionConfigurationInterface $connection,
         RetryPolicy $policy,
+        ?string $endpointOverride = null,
+        ?string $baseUrlOverride = null,
     ): ClientContract;
 }

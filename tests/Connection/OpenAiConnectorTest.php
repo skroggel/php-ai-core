@@ -142,6 +142,8 @@ SSE;
             public function create(
                 AiConnectionConfigurationInterface $connection,
                 RetryPolicy $policy,
+                ?string $endpointOverride = null,
+                ?string $baseUrlOverride = null,
             ): ClientContract {
                 return $this->client;
             }

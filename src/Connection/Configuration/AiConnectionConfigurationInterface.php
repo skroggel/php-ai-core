@@ -56,6 +56,27 @@ interface AiConnectionConfigurationInterface
      */
     public function getBaseUrl(): string;
 
+    /**
+     * Returns whether the base URL is already a complete request endpoint.
+     *
+     * @return bool Complete URL flag.
+     */
+    public function isBaseUrlNoExtend(): bool;
+
+    /**
+     * Returns the optional complete embedding endpoint URL.
+     *
+     * @return string Complete embedding endpoint URL or an empty string.
+     */
+    public function getEmbeddingBaseUrl(): string;
+
+    /**
+     * Returns whether the embedding URL is already a complete request endpoint.
+     *
+     * @return bool Complete embedding URL flag.
+     */
+    public function isEmbeddingBaseUrlNoExtend(): bool;
+
 
     /**
      * Returns the optional provider organization identifier.

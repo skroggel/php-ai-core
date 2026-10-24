@@ -24,6 +24,8 @@ namespace Madj2k\AiCore\Connection\Authentication;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use Madj2k\AiCore\Exception\ApiException;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 /**
  * Class OAuth2ClientCredentialsTokenProvider
@@ -43,7 +45,18 @@ final class OAuth2ClientCredentialsTokenProvider
     /**
      * @param ClientInterface|null $httpClient Optional HTTP client for tests or custom transports.
      */
-    public function __construct(private readonly ?ClientInterface $httpClient = null) {}
+    private readonly LoggerInterface $logger;
+
+    /**
+     * @param ClientInterface|null $httpClient Optional HTTP client for tests or custom transports.
+     * @param LoggerInterface|null $logger Optional diagnostic logger.
+     */
+    public function __construct(
+        private readonly ?ClientInterface $httpClient = null,
+        ?LoggerInterface $logger = null,
+    ) {
+        $this->logger = $logger ?? new NullLogger();
+    }
 
 
     /**
@@ -77,13 +90,41 @@ final class OAuth2ClientCredentialsTokenProvider
         if ($scope !== '') {
             $form['scope'] = $scope;
         }
-        $response = ($this->httpClient ?? new Client())->request('POST', $endpoint, [
-            'auth' => [$clientId, $clientSecret],
-            'form_params' => $form,
-            'headers' => ['Accept' => 'application/json'],
-            'http_errors' => false,
+
+        $this->logger->debug('OAuth client-credentials request prepared.', [
+            'endpoint' => $endpoint,
+            'client_id' => '[REDACTED]',
+            'client_secret' => '[REDACTED]',
+            'scope' => $scope,
+            'grant_type' => 'client_credentials',
+            'authentication' => 'http_basic',
         ]);
-        $payload = json_decode((string)$response->getBody(), true);
+
+        try {
+            $response = ($this->httpClient ?? new Client())->request('POST', $endpoint, [
+                'auth' => [$clientId, $clientSecret],
+                'form_params' => $form,
+                'headers' => ['Accept' => 'application/json'],
+                'http_errors' => false,
+            ]);
+        } catch (\Throwable $exception) {
+            $this->logger->debug('OAuth client-credentials request failed before response.', [
+                'endpoint' => $endpoint,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+            throw $exception;
+        }
+
+        $responseBody = (string)$response->getBody();
+        $this->logger->debug('OAuth client-credentials response received.', [
+            'endpoint' => $endpoint,
+            'status_code' => $response->getStatusCode(),
+            'content_type' => $response->getHeaderLine('Content-Type'),
+            'body' => $this->redactResponseBody($responseBody),
+        ]);
+
+        $payload = json_decode($responseBody, true);
         $token = is_array($payload) ? trim((string)($payload['access_token'] ?? '')) : '';
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300 || $token === '') {
             throw new ApiException('OAuth token endpoint returned an invalid response.', 1789004002);
@@ -95,5 +136,27 @@ final class OAuth2ClientCredentialsTokenProvider
         ];
 
         return $token;
+    }
+
+    /**
+     * Redacts credentials and limits the OAuth response diagnostics.
+     *
+     * @param string $body OAuth response body.
+     * @return string Redacted response preview.
+     */
+    private function redactResponseBody(string $body): string
+    {
+        $payload = json_decode($body, true);
+        if (is_array($payload)) {
+            foreach (['access_token', 'refresh_token', 'id_token', 'client_secret'] as $key) {
+                if (array_key_exists($key, $payload)) {
+                    $payload[$key] = '[REDACTED]';
+                }
+            }
+
+            $body = (string)json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        return substr($body, 0, 2000);
     }
 }
