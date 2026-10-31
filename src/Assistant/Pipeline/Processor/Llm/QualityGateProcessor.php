@@ -45,22 +45,6 @@ use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
 final class QualityGateProcessor extends AbstractLlmProcessor implements ProcessorStreamingInterface
 {
     /**
-     * Constructor.
-     *
-     * @param \Madj2k\AiCore\Connection\Resolver\AiConnectorResolver $aiConnectorResolver AI connector registry.
-     * @param \Madj2k\AiCore\Assistant\Prompt\PromptBuilder $promptBuilder Prompt builder.
-     * @param \Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface $pipelineLogger Pipeline logger.
-     */
-    public function __construct(
-        AiConnectorResolver $aiConnectorResolver,
-        PromptBuilder $promptBuilder,
-        PipelineLoggerInterface $pipelineLogger,
-    ) {
-        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
-    }
-
-
-    /**
      * @inheritDoc
      */
     public function getIdentifier(): string
@@ -94,7 +78,7 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
     public function process(Context $context, PipelineStepConfigurationInterface $step, ?PipelineLogMetaData $logContext = null): void
     {
         $messages = $this->promptBuilder->buildMessages($context, $step);
-        $answer = $this->callAi($context, $messages, $step, $logContext);
+        $answer = (string)$this->callAi($context, $messages, $step, $logContext);
         $context->getAnswer()->setFinal($answer !== '' ? $answer : $context->getAnswer()->getCandidate());
 
         // trace
@@ -115,6 +99,7 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
         callable $onData,
         ?PipelineLogMetaData $logContext = null
     ): void {
+
         $messages = $this->promptBuilder->buildMessages($context, $step);
         $answer = $this->callAiStream($context, $messages, $step, $onData, $logContext);
         $context->getAnswer()->setFinal($answer !== '' ? $answer : $context->getAnswer()->getCandidate());

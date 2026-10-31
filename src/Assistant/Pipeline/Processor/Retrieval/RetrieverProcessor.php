@@ -60,7 +60,7 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
      * @param \Madj2k\AiCore\Connection\Resolver\AiConnectorResolver $aiConnectorResolver AI connector registry.
      * @param \Madj2k\AiCore\Connection\Resolver\VectorStoreConnectorResolver $vectorStoreConnectorResolver Vector store connector registry.
      * @param \Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface $pipelineLogger Pipeline logger.
-     * @param \Madj2k\AiCore\Connection\VectorStore\FilterValueResolverInterface $filterValueResolver Filter value resolver.
+     * @param \Madj2k\AiCore\Connection\VectorStore\Filter\FilterValueResolverInterface|null $filterValueResolver Filter value resolver.
      */
     public function __construct(
         private AiConnectorResolver          $aiConnectorResolver,

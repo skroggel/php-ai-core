@@ -105,11 +105,11 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             $response = $this->retryExecutor->execute(
                 'openai',
                 'embed',
-                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create(array_merge([
+                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create($this->removeIgnoredParameters($connection, array_merge([
                     'model' => $configuredModel,
                     'input' => $request->getText(),
                     'temperature' => $this->resolveEmbeddingTemperature($connection, $request),
-                ], $connection->getAdditionalOptionsArray(), $request->getOptions())),
+                ], $connection->getAdditionalOptionsArray(), $request->getOptions()))),
             );
 
             /** @var array<int, float> $embedding */
@@ -157,11 +157,11 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
             $response = $this->retryExecutor->execute(
                 'openai',
                 'embedBatch',
-                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create(array_merge([
+                fn (): object => $this->createEmbeddingClient($connection)->embeddings()->create($this->removeIgnoredParameters($connection, array_merge([
                     'model' => $configuredModel,
                     'input' => $texts,
                     'temperature' => $this->resolveEmbeddingTemperature($connection, $firstRequest),
-                ], $connection->getAdditionalOptionsArray(), $firstRequest->getOptions())),
+                ], $connection->getAdditionalOptionsArray(), $firstRequest->getOptions()))),
             );
 
             return $this->buildEmbeddingResponses($response, $configuredModel);
@@ -358,12 +358,30 @@ final class OpenAiConnector extends AbstractConnector implements AiConnectorInte
      */
     protected function buildChatPayload(AiConnectionConfigurationInterface $connection, AiRequest $request): array
     {
-        return array_merge([
+        return $this->removeIgnoredParameters($connection, array_merge([
             'model' => $this->resolveChatModel($connection, $request),
             'messages' => $request->toMessageArray(),
             'temperature' => $this->resolveChatTemperature($connection, $request),
             'max_completion_tokens' => $request->getMaxTokens(),
-        ], $connection->getAdditionalOptionsArray(), $request->getOptions());
+        ], $connection->getAdditionalOptionsArray(), $request->getOptions()));
+    }
+
+    /**
+     * Removes provider parameters configured as unsupported.
+     *
+     * @param \Madj2k\AiCore\Connection\Configuration\AiConnectionConfigurationInterface $connection AI connection.
+     * @param array<string,mixed> $parameters Request parameters.
+     * @return array<string,mixed> Filtered request parameters.
+     */
+    protected function removeIgnoredParameters(
+        AiConnectionConfigurationInterface $connection,
+        array $parameters,
+    ): array {
+        foreach ($connection->getIgnoredParameters() as $parameter) {
+            unset($parameters[$parameter]);
+        }
+
+        return $parameters;
     }
 
 

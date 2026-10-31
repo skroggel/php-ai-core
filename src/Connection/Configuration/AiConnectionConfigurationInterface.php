@@ -140,4 +140,11 @@ interface AiConnectionConfigurationInterface
      * @return array<string, mixed>
      */
     public function getAdditionalOptionsArray(): array;
+
+    /**
+     * Returns parameter names that must be removed from outgoing requests.
+     *
+     * @return array<int,string> Ignored top-level parameter names.
+     */
+    public function getIgnoredParameters(): array;
 }

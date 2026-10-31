@@ -23,6 +23,8 @@ declare(strict_types=1);
 namespace Madj2k\AiCore\Assistant\Pipeline\Processor;
 
 use Madj2k\AiCore\Assistant\Context\Context;
+use Madj2k\AiCore\Assistant\Contract\ContractInterface;
+use Madj2k\AiCore\Assistant\Contract\ContractRegistry;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
@@ -55,7 +57,8 @@ abstract class AbstractLlmProcessor implements ProcessorInterface
     public function __construct(
         protected readonly AiConnectorResolver      $aiConnectorResolver,
         protected readonly PromptBuilder            $promptBuilder,
-        protected readonly PipelineLoggerInterface           $pipelineLogger,
+        protected readonly ContractRegistry        $contractRegistry,
+        protected readonly PipelineLoggerInterface  $pipelineLogger,
     ) {
     }
 
@@ -67,7 +70,7 @@ abstract class AbstractLlmProcessor implements ProcessorInterface
      * @param array<int,array{role:string,content:string}> $messages LLM messages.
      * @param PipelineStepConfigurationInterface $step Step configuration.
      * @param \Madj2k\AiCore\Assistant\Log\PipelineLogMetaData|null $logContext Optional log context.
-     * @return string
+     * @return mixed Parsed contract result.
      * @throws \Madj2k\AiCore\Exception\AppException
      * @throws \Madj2k\AiCore\Exception\AssistantException
      */
@@ -76,7 +79,8 @@ abstract class AbstractLlmProcessor implements ProcessorInterface
         array $messages,
         PipelineStepConfigurationInterface $step,
         ?PipelineLogMetaData $logContext = null
-    ): string {
+    ): mixed {
+        $contract = $this->contractRegistry->resolveForStep($step);
 
         $aiConnection = $context->getAssistant()->getAiConnection();
         if ($aiConnection === null) {
@@ -115,20 +119,21 @@ abstract class AbstractLlmProcessor implements ProcessorInterface
             );
 
         $answer = trim($response->getContent());
+        $parsedResponse = $contract->parse($answer, $step);
 
         if ($logContext instanceof PipelineLogMetaData) {
             $this->pipelineLogger->logLlmResponse(
                 $logContext,
                 $step->getTitle(),
                 $step->getType()->value,
-                $answer,
+                is_string($parsedResponse) ? $parsedResponse : $answer,
                 [
                     'usage' => $response->getUsage() ?? [],
                 ]
             );
         }
 
-        return $answer;
+        return $parsedResponse;
     }
 
 

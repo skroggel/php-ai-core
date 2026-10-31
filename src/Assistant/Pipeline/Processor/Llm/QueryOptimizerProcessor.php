@@ -27,6 +27,7 @@ use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\AbstractLlmProcessor;
+use Madj2k\AiCore\Assistant\Contract\DecisionContract;
 use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
 use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
 
@@ -43,21 +44,6 @@ use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
  */
 final class QueryOptimizerProcessor extends AbstractLlmProcessor
 {
-    /**
-     * Constructor.
-     *
-     * @param \Madj2k\AiCore\Connection\Resolver\AiConnectorResolver $aiConnectorResolver AI connector registry.
-     * @param \Madj2k\AiCore\Assistant\Prompt\PromptBuilder $promptBuilder Prompt builder.
-     * @param \Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface $pipelineLogger Pipeline logger.
-     */
-    public function __construct(
-        AiConnectorResolver $aiConnectorResolver,
-        PromptBuilder $promptBuilder,
-        PipelineLoggerInterface $pipelineLogger,
-    ) {
-        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
-    }
-
 
     /**
      * @inheritDoc
@@ -92,13 +78,18 @@ final class QueryOptimizerProcessor extends AbstractLlmProcessor
     public function process(Context $context, PipelineStepConfigurationInterface $step, ?PipelineLogMetaData $logContext = null): void
     {
         $messages = $this->promptBuilder->buildMessages($context, $step);
-        $optimizedQuery = $this->normalizeOptimizedQuery(
-            $this->callAi($context, $messages, $step, $logContext)
-        );
-
-        if ($optimizedQuery !== '') {
-            $context->setCurrentQuery($optimizedQuery);
+        $decision = $this->callAi($context, $messages, $step, $logContext);
+        if (!$decision instanceof \Madj2k\AiCore\Assistant\DTO\DecisionResult) {
+            throw new \UnexpectedValueException('Query optimizer did not return a decision result.');
         }
+        if ($decision === null) {
+            return;
+        }
+
+        if ($decision->query !== '') {
+            $context->setCurrentQuery($decision->query);
+        }
+        $context->setRetrievalPlan($decision->retrievalPlan);
 
         // trace
         $context->getProcessingTrace()->add('query_optimizer.completed',

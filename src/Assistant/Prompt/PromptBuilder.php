@@ -25,7 +25,7 @@ use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
@@ -210,7 +210,7 @@ final class PromptBuilder
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType $type Parent prompt type.
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptType $type Parent prompt type.
      * @param string $globalTitle Global parent title.
      * @param string $globalContent Global parent content.
      * @param string $stepTitle Step parent title.
@@ -257,7 +257,7 @@ final class PromptBuilder
      * when the step itself contains output rules.
      *
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType $type Prompt type.
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptType $type Prompt type.
      * @return bool Whether the step owns the typed context.
      */
     private function usesStepPromptTypeConfiguration(

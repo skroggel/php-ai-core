@@ -27,7 +27,7 @@ use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 
 /**
  * Class RetrievalContextBuilder

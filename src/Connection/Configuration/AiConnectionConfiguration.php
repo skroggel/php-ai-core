@@ -48,6 +48,7 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
      * @param string $embeddingBaseUrl Optional complete embedding endpoint URL.
      * @param bool $baseUrlNoExtend Do not append the provider resource path to the base URL.
      * @param bool $embeddingBaseUrlNoExtend Do not append the embedding resource path to the embedding URL.
+     * @param array<int,string> $ignoredParameters Parameter names removed from outgoing requests.
      */
     public function __construct(
         private string $apiKey,
@@ -64,6 +65,7 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
         private string $embeddingBaseUrl = '',
         private bool $baseUrlNoExtend = false,
         private bool $embeddingBaseUrlNoExtend = false,
+        private array $ignoredParameters = [],
     ) {}
 
     /** @inheritDoc */
@@ -148,6 +150,22 @@ final readonly class AiConnectionConfiguration implements AiConnectionConfigurat
     public function getEmbeddingTemperature(): float
     {
         return $this->embeddingTemperature;
+    }
+
+    /**
+     * Returns parameter names that must be removed from outgoing requests.
+     *
+     * @return array<int,string> Ignored top-level parameter names.
+     */
+    public function getIgnoredParameters(): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map(
+                static fn (mixed $parameter): string => trim((string)$parameter),
+                $this->ignoredParameters,
+            ),
+            static fn (string $parameter): bool => $parameter !== '',
+        )));
     }
 
     /** @inheritDoc */

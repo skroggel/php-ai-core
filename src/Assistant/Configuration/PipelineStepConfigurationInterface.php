@@ -25,7 +25,6 @@ use Madj2k\AiCore\Assistant\Enum\AssistantPipelineFailureStrategy;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
-use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
 use Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 
@@ -162,11 +161,19 @@ interface PipelineStepConfigurationInterface
 
 
     /**
-     * Returns the output areas controlled by the intent selector.
+     * Returns the configured response contract identifiers.
      *
-     * @return array<int,\Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType> Output areas.
+     * @return array<int,string> Contract identifiers.
      */
-    public function getIntentSelectionOutputTypes(): array;
+    public function getContracts(): array;
+
+
+    /**
+     * Returns the explicitly selected primary response contract.
+     *
+     * @return string Contract identifier or an empty string for automatic resolution.
+     */
+    public function getDecisionContracts(): array;
 
 
     /**
@@ -174,7 +181,7 @@ interface PipelineStepConfigurationInterface
      *
      * @return string Payload field path.
      */
-    public function getIntentSelectionPayloadField(): string;
+    public function getDecisionPayloadField(): string;
 
 
     /**
@@ -184,7 +191,7 @@ interface PipelineStepConfigurationInterface
      *
      * @return array<int,string> Retriever identifiers.
      */
-    public function getIntentSelectionPayloadRetrievers(): array;
+    public function getDecisionPayloadRetrievers(): array;
 
 
     /**
@@ -192,7 +199,7 @@ interface PipelineStepConfigurationInterface
      *
      * @return \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction Payload conjunction.
      */
-    public function getIntentSelectionPayloadConjunction(): FilterConjunction;
+    public function getDecisionPayloadConjunction(): FilterConjunction;
 
 
     /**
@@ -200,7 +207,7 @@ interface PipelineStepConfigurationInterface
      *
      * @return string Additional instructions.
      */
-    public function getIntentSelectionInstructions(): string;
+    public function getDecisionInstructions(): string;
 
 
     /**
@@ -208,7 +215,7 @@ interface PipelineStepConfigurationInterface
      *
      * @return string Metadata schema.
      */
-    public function getIntentSelectionMetadata(): string;
+    public function getDecisionMetadata(): string;
 
 
     /**

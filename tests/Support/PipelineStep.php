@@ -8,7 +8,6 @@ use Madj2k\AiCore\Assistant\Enum\AssistantPipelineFailureStrategy;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineStage;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
-use Madj2k\AiCore\Assistant\Enum\IntentSelectionOutputType;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface;
 
@@ -43,8 +42,8 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         private array $presentationRuleIdentifiers = [],
         private string $retrievalIdentifier = '',
         private array $intentSelectionOutputTypes = [],
-        private string $intentSelectionPayloadField = '',
-        private FilterConjunction $intentSelectionPayloadConjunction = FilterConjunction::And,
+        private string $decisionPayloadField = '',
+        private FilterConjunction $decisionPayloadConjunction = FilterConjunction::And,
     ) {
     }
 
@@ -53,14 +52,31 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
     public function getType(): AssistantPipelineProcessorType { return $this->type; }
     public function getProcessorIdentifier(): string { return $this->identifier; }
     public function getRetrievalIdentifier(): string { return $this->retrievalIdentifier; }
-    /** @return array<int,IntentSelectionOutputType> */
-    public function getIntentSelectionOutputTypes(): array { return $this->intentSelectionOutputTypes; }
-    public function getIntentSelectionPayloadField(): string { return $this->intentSelectionPayloadField; }
     /** @return array<int,string> */
-    public function getIntentSelectionPayloadRetrievers(): array { return []; }
-    public function getIntentSelectionPayloadConjunction(): FilterConjunction { return $this->intentSelectionPayloadConjunction; }
-    public function getIntentSelectionInstructions(): string { return ''; }
-    public function getIntentSelectionMetadata(): string { return ''; }
+    public function getIntentSelectionOutputTypes(): array { return $this->intentSelectionOutputTypes; }
+    /** @return array<int,string> */
+    public function getContracts(): array
+    {
+        $contracts = [];
+        foreach ($this->intentSelectionOutputTypes as $type) {
+            $contracts[] = match ($type) {
+                'retriever' => 'retrieval',
+                'presentation_rules' => 'presentationRules',
+                'retriever_payload' => 'retrieverPayload',
+                default => '',
+            };
+        }
+
+        return array_values(array_filter($contracts));
+    }
+    /** @return array<int,string> */
+    public function getDecisionContracts(): array { return []; }
+    public function getDecisionPayloadField(): string { return $this->decisionPayloadField; }
+    /** @return array<int,string> */
+    public function getDecisionPayloadRetrievers(): array { return []; }
+    public function getDecisionPayloadConjunction(): FilterConjunction { return $this->decisionPayloadConjunction; }
+    public function getDecisionInstructions(): string { return ''; }
+    public function getDecisionMetadata(): string { return ''; }
     public function getStage(): AssistantPipelineStage { return $this->stage; }
     public function getIncludeIdentityPrompt(): bool { return $this->includeIdentity; }
     public function getIncludeBehaviorRules(): bool { return $this->includeBehavior; }

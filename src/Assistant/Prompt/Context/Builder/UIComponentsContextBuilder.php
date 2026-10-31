@@ -26,8 +26,8 @@ use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Presentation\UIComponents\UIComponentProviderInterface;
-use Madj2k\AiCore\Assistant\DTO\PromptRole;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptRole;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 
 /**
  * Class UIComponentsContextBuilder

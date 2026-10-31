@@ -45,20 +45,6 @@ use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
 final class AnswerGeneratorProcessor extends AbstractLlmProcessor implements ProcessorStreamingInterface
 {
     /**
-     * Constructor.
-     *
-     * @inheritDoc
-     * @param \Madj2k\AiCore\Assistant\Prompt\PromptBuilder $promptBuilder Prompt builder.
-     */
-    public function __construct(
-        AiConnectorResolver                      $aiConnectorResolver,
-        PromptBuilder                            $promptBuilder,
-        PipelineLoggerInterface                           $pipelineLogger,
-    ) {
-        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
-    }
-
-    /**
      * @inheritDoc
      */
     public function getIdentifier(): string
@@ -91,7 +77,7 @@ final class AnswerGeneratorProcessor extends AbstractLlmProcessor implements Pro
     public function process(Context $context, PipelineStepConfigurationInterface $step, ?PipelineLogMetaData $logContext = null): void
     {
         $messages = $this->promptBuilder->buildMessages($context, $step);
-        $answer = $this->callAi($context, $messages, $step, $logContext);
+        $answer = (string)$this->callAi($context, $messages, $step, $logContext);
         $context->getAnswer()->setCandidate($answer);
 
         // trace
