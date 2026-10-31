@@ -46,21 +46,6 @@ use Madj2k\AiCore\Exception\AppException;
 final class ContextOptimizerProcessor extends AbstractLlmProcessor
 {
     /**
-     * Constructor.
-     *
-     * @inheritDoc
-     * @param \Madj2k\AiCore\Assistant\Prompt\PromptBuilder $promptBuilder Prompt builder.
-     */
-    public function __construct(
-        AiConnectorResolver                      $aiConnectorResolver,
-        PromptBuilder                             $promptBuilder,
-        PipelineLoggerInterface                           $pipelineLogger,
-    ) {
-        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
-    }
-
-
-    /**
      * @inheritDoc
      */
     public function getIdentifier(): string
@@ -89,7 +74,8 @@ final class ContextOptimizerProcessor extends AbstractLlmProcessor
 
     /**
      * @inheritDoc
-     * @throws \Madj2k\AiCore\Exception\ApiException
+     * @throws \Madj2k\AiCore\Exception\AppException
+     * @throws \Madj2k\AiCore\Exception\AssistantException
      */
     public function process(Context $context, PipelineStepConfigurationInterface $step, ?PipelineLogMetaData $logContext = null): void
     {
@@ -104,7 +90,7 @@ final class ContextOptimizerProcessor extends AbstractLlmProcessor
 
         $messages = $this->promptBuilder->buildMessages($context, $step);
 
-        $answerContext = $this->callAi($context, $messages, $step, $logContext);
+        $answerContext = (string)$this->callAi($context, $messages, $step, $logContext);
         $context->getRetrieval()->setAnswerContext($answerContext !== '' ? $answerContext : $rawContext);
 
         // trace

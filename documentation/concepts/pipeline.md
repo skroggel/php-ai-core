@@ -5,6 +5,34 @@ instances. The step defines **what role** should run, **which
 implementation** should execute it and **how** that execution should be
 configured.
 
+## Response contracts
+
+Every LLM processor resolves one response contract through the
+`ContractRegistry`. The same contract is used for the prompt description and
+for parsing the LLM response.
+
+The default contract returns plain text. Decision-capable processors such as
+`intent_selector` and `query_optimizer` use `DecisionContract`, which defines
+the shared JSON response. Its registered parts are:
+
+```text
+DecisionContract
+├── RetrievalDecisionContract
+├── PresentationRulesDecisionContract
+└── RetrieverPayloadContract
+```
+
+`RetrievalDecisionContract` and `PresentationRulesDecisionContract` support the
+modes `all`, `selected`, `all_except` and `none`. `all` and `none` require an
+empty list; `selected` includes only the listed identifiers and `all_except`
+excludes them. `RetrieverPayloadContract` provides the `values` list for the
+configured payload field.
+
+Contracts are registered through contract interfaces and can be extended
+without changing the processors. A step may explicitly select its primary
+decision contract; otherwise the registry selects the contract supporting the
+processor type.
+
 ## Step selection
 
 Two values determine processor resolution:
@@ -43,6 +71,31 @@ configuration, retrieval and presentation-rule selection are enabled and
 payload filtering is disabled. The intent context lists the available target
 and rule identifiers and, when payload filtering is enabled, the configured
 payload field path.
+
+The same decision contract is also used by `QueryOptimizerProcessor`. Its
+response adds the optimized `query` and uses the retrieval area to control
+subsequent retrieval steps:
+
+```json
+{
+  "query": "Which requirements apply to the application?",
+  "retrieval": {
+    "mode": "selected",
+    "targets": ["detail_retrieval"]
+  }
+}
+```
+
+When the query optimizer runs after retrieval, the prompt includes the current
+retrieval results. `none` skips subsequent retrieval, while `selected` limits
+it to the named targets. The default retrieval mode remains `all`.
+
+The contract is used before and after retrieval. Before retrieval, `query` is
+the rewritten search query and the retrieval area normally remains `all`. After
+retrieval, the same LLM run evaluates whether the current results are enough,
+creates a focused follow-up query when needed and controls the next retrieval
+steps. The query optimizer response must use the JSON contract; configuration
+backwards compatibility does not extend to changing that response contract.
 
 ## Processor types
 

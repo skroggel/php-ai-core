@@ -23,6 +23,7 @@ namespace Madj2k\AiCore\Assistant\Pipeline\Processor\Llm;
 
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
+use Madj2k\AiCore\Assistant\Contract\ContractRegistry;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\AbstractLlmProcessor;
@@ -54,10 +55,11 @@ final class ToolCallingProcessor extends AbstractLlmProcessor
     public function __construct(
         AiConnectorResolver $aiConnectorResolver,
         PromptBuilder $promptBuilder,
+        ContractRegistry $contractRegistry,
         PipelineLoggerInterface $pipelineLogger,
         private readonly ToolCallingService $toolCallingService,
     ) {
-        parent::__construct($aiConnectorResolver, $promptBuilder, $pipelineLogger);
+        parent::__construct($aiConnectorResolver, $promptBuilder, $contractRegistry, $pipelineLogger);
     }
 
     /** @inheritDoc */

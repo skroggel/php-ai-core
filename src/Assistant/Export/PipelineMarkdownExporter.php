@@ -247,11 +247,11 @@ final class PipelineMarkdownExporter
                         $lines[] = '- `' . $targetStep->getRetrievalIdentifier() . '` - ' . $this->value($targetStep->getTitle());
                     }
                 }
-                if ($step->getIntentSelectionMetadata() !== '') {
+                if ($step->getDecisionMetadata() !== '') {
                     $lines[] = '';
                     $lines[] = 'Configured metadata schema:';
                     $lines[] = '```json';
-                    $lines[] = $step->getIntentSelectionMetadata();
+                    $lines[] = $step->getDecisionMetadata();
                     $lines[] = '```';
                 }
             }

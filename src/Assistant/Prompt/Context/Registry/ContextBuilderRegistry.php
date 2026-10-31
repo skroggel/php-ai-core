@@ -26,8 +26,8 @@ use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\Builder\ContextBuilderInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
-use Madj2k\AiCore\Assistant\DTO\PromptRole;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptRole;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 
 /**
  * Class ContextBuilderRegistry
@@ -57,8 +57,8 @@ final readonly class ContextBuilderRegistry
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current chat context.
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step Pipeline step.
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptRole|null $role
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptRole|null $role
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptType|null $promptType Parent prompt section type.
      * @return array<int, \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection> Prompt sections.
      */
     public function buildSections(
@@ -102,7 +102,7 @@ final readonly class ContextBuilderRegistry
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptType|null $promptType Parent prompt section type.
      * @return \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection[]
      */
     public function buildSystemSections(
@@ -119,7 +119,7 @@ final readonly class ContextBuilderRegistry
      *
      * @param \Madj2k\AiCore\Assistant\Context\Context $context
      * @param \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+     * @param \Madj2k\AiCore\Assistant\Enum\PromptType|null $promptType Parent prompt section type.
      * @return \Madj2k\AiCore\Assistant\Prompt\Context\PromptSection[]
      */
     public function buildUserSections(
@@ -135,7 +135,7 @@ final readonly class ContextBuilderRegistry
      /**
       * Returns static instructions without building runtime context sections.
       *
-     * @param \Madj2k\AiCore\Assistant\DTO\PromptType|null $promptType Parent prompt section type.
+      * @param \Madj2k\AiCore\Assistant\Enum\PromptType|null $promptType Parent prompt section type.
      * @return array<int, string> General instructions.
      */
      public function getGeneralInstructions(

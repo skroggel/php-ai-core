@@ -24,8 +24,8 @@ namespace Madj2k\AiCore\Assistant\Prompt\Context\Builder;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
-use Madj2k\AiCore\Assistant\DTO\PromptRole;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptRole;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 
 /**
  * Class AbstractContextBuilder

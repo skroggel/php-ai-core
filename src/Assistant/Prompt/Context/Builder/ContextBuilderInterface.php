@@ -24,8 +24,8 @@ namespace Madj2k\AiCore\Assistant\Prompt\Context\Builder;
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
-use Madj2k\AiCore\Assistant\DTO\PromptRole;
-use Madj2k\AiCore\Assistant\DTO\PromptType;
+use Madj2k\AiCore\Assistant\Enum\PromptRole;
+use Madj2k\AiCore\Assistant\Enum\PromptType;
 
 /**
  * Interface ContextBuilderInterface
@@ -55,7 +55,7 @@ interface ContextBuilderInterface
     /**
      * Returns the parent prompt section type for sections produced by this builder.
      *
-     * @return \Madj2k\AiCore\Assistant\DTO\PromptType Parent prompt section type.
+     * @return \Madj2k\AiCore\Assistant\Enum\PromptType Parent prompt section type.
      */
     public function getPromptType(): PromptType;
 
