@@ -38,7 +38,6 @@ use Madj2k\AiCore\Connection\VectorStore\Filter\FilterValueResolverInterface;
 use Madj2k\AiCore\Connection\VectorStore\Filter\IdentityFilterValueResolver;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup;
-use Madj2k\AiCore\Tests\Support\PipelineStep;
 
 /**
  * Class RetrieverProcessor
@@ -209,12 +208,12 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
      * retrieval plan. Static conditions remain active and are combined with
      * the dynamic conditions using a logical AND.
      *
-     * @param \Madj2k\AiCore\Tests\Support\PipelineStep $step
+     * @param PipelineStepConfigurationInterface $step Current pipeline step.
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
      * @param \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null $filter Static filter.
      * @return \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null Combined filter.
      */
-    private function mergeIntentPayloadFilter(PipelineStep $step, Context $context, ?FilterGroup $filter): ?FilterGroup
+    private function mergeIntentPayloadFilter(PipelineStepConfigurationInterface $step, Context $context, ?FilterGroup $filter): ?FilterGroup
     {
         $payloadFilter = $context->getRetrievalPlan()->payloadFilter;
         $payloadRetrievers = $context->getRetrievalPlan()->payloadRetrievers;
