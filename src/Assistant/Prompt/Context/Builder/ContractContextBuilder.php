@@ -82,10 +82,7 @@ final class ContractContextBuilder extends AbstractContextBuilder
         $instructions = [$contract->getPromptInstructions($step)];
 
         if ($contract instanceof DecisionContract) {
-            $contractIdentifiers = $step->getContracts();
-            if ($contractIdentifiers === []) {
-                $contractIdentifiers = ['retrieval', 'presentationRules'];
-            }
+            $contractIdentifiers = $step->getDecisionContracts();
             if (in_array('retrieval', $contractIdentifiers, true)) {
                 $instructions[] = $this->buildRetrievalTargets($context, $step);
             }

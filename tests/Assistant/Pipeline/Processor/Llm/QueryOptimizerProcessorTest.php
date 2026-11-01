@@ -62,7 +62,10 @@ JSON));
 
         $processor->process(
             $context,
-            new PipelineStep(type: AssistantPipelineProcessorType::QueryOptimizer),
+            new PipelineStep(
+                type: AssistantPipelineProcessorType::QueryOptimizer,
+                decisionContracts: ['retrieval'],
+            ),
         );
 
         self::assertSame('detail question', $context->getCurrentQuery());

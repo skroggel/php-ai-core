@@ -29,13 +29,15 @@ If you are new to the library, read the documentation in this order:
      components and configured interactions.
 8.  [Vector filters](concepts/vector-filters.md) - generic payload filters and
      connector mapping.
-9.  [Retrieval selection](concepts/retrieval-selection.md) - model-controlled
+9.  [Payload indexes](concepts/payload-indexes.md) - automatic Qdrant metadata
+      indexes and additional index configuration.
+10. [Retrieval selection](concepts/retrieval-selection.md) - model-controlled
      retrieval routing and metadata.
-10. [Configuration exports](concepts/exports.md) - AI-readable pipeline
+11. [Configuration exports](concepts/exports.md) - AI-readable pipeline
      configuration documents.
-11. [Indexing](workflows/indexing.md) - chunking, embeddings,
+12. [Indexing](workflows/indexing.md) - chunking, embeddings,
      generations and vector writes.
-12. [Extension points](extending/overview.md) - where custom
+13. [Extension points](extending/overview.md) - where custom
     implementations plug in.
 
 ## Architectural principles

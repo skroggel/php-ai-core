@@ -38,6 +38,7 @@ use Madj2k\AiCore\Connection\VectorStore\Filter\FilterValueResolverInterface;
 use Madj2k\AiCore\Connection\VectorStore\Filter\IdentityFilterValueResolver;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup;
+use Madj2k\AiCore\Tests\Support\PipelineStep;
 
 /**
  * Class RetrieverProcessor
@@ -114,6 +115,7 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
         if ($logContext instanceof PipelineLogMetaData) {
             $this->pipelineLogger->logRetrievalRequest($logContext, $step->getTitle(), $this->getIdentifier(), [
                 'query' => $context->getCurrentQuery(),
+                'effective_query' => $context->getCurrentQuery(),
                 'collection' => $collection,
                 'max_retrieval_results' => $step->getMaxRetrievalResults(),
                 'score_threshold' => $step->getScoreThreshold(),
@@ -138,7 +140,7 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
             ? $step->getRetrievalFilter()
             : null;
         $filter = ($this->filterValueResolver ?? new IdentityFilterValueResolver())->resolve($filter, $context);
-        $filter = $this->mergeIntentPayloadFilter($context, $filter);
+        $filter = $this->mergeIntentPayloadFilter($step, $context, $filter);
 
         $rows = $this->vectorStoreConnectorResolver
             ->get($vectorStoreConnection->getConnectorIdentifier())
@@ -207,11 +209,12 @@ final readonly class RetrieverProcessor extends AbstractRetrieverProcessor
      * retrieval plan. Static conditions remain active and are combined with
      * the dynamic conditions using a logical AND.
      *
+     * @param \Madj2k\AiCore\Tests\Support\PipelineStep $step
      * @param \Madj2k\AiCore\Assistant\Context\Context $context Current assistant context.
      * @param \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null $filter Static filter.
      * @return \Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup|null Combined filter.
      */
-    private function mergeIntentPayloadFilter(Context $context, ?FilterGroup $filter): ?FilterGroup
+    private function mergeIntentPayloadFilter(PipelineStep $step, Context $context, ?FilterGroup $filter): ?FilterGroup
     {
         $payloadFilter = $context->getRetrievalPlan()->payloadFilter;
         $payloadRetrievers = $context->getRetrievalPlan()->payloadRetrievers;

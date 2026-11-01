@@ -11,6 +11,7 @@ use Madj2k\AiCore\Assistant\Context\Request\Request;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalResult;
 use Madj2k\AiCore\Assistant\Context\Trace\ProcessingTrace;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
+use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\Retrieval\RetrieverProcessor;
 use Madj2k\AiCore\Connection\Ai\AiConnectorInterface;
@@ -39,10 +40,23 @@ final class RetrieverProcessorTest extends TestCase
             },
         );
         $vectorConnector = new RecordingVectorStoreConnector();
+        $pipelineLogger = $this->createMock(PipelineLoggerInterface::class);
+        $pipelineLogger
+            ->expects(self::once())
+            ->method('logRetrievalRequest')
+            ->with(
+                self::isInstanceOf(PipelineLogMetaData::class),
+                'knowledge',
+                'aiassistant.retriever.default',
+                self::callback(static function (array $payload): bool {
+                    return ($payload['query'] ?? null) === 'query'
+                        && ($payload['effective_query'] ?? null) === 'query';
+                }),
+            );
         $processor = new RetrieverProcessor(
             new AiConnectorResolver([$aiConnector]),
             new VectorStoreConnectorResolver([$vectorConnector]),
-            $this->createStub(PipelineLoggerInterface::class),
+            $pipelineLogger,
         );
         $context = new Context(
             new AssistantContext(
@@ -67,7 +81,7 @@ final class RetrieverProcessorTest extends TestCase
             retrievalIdentifier: '2',
         );
 
-        $processor->process($context, $step);
+        $processor->process($context, $step, $this->createStub(PipelineLogMetaData::class));
 
         self::assertSame('special', $vectorConnector->searchRequest?->getCollection());
         self::assertSame(EmbeddingPurpose::RetrievalQuery, $embeddingRequest?->getPurpose());

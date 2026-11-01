@@ -6,9 +6,9 @@ The `intent_selector` pipeline step can control three independent output areas:
 * `presentation_rules` selects the presentation rules for the answer;
 * `retriever_payload` creates a dynamic payload filter for retrieval.
 
-The areas are configured independently. An area that is not enabled keeps the
-existing runtime default. Empty or missing legacy output configuration enables
-`retriever` and `presentation_rules`, while `retriever_payload` remains disabled.
+The areas are configured independently. An area that is not enabled is omitted
+from the decision contract and keeps the neutral runtime default. There is no
+implicit legacy activation of `retriever` or `presentation_rules`.
 
 Every retriever needs a stable `retrievalIdentifier`. The selector receives the
 available targets and the original/current query as prompt context.

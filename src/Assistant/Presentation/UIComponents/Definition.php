@@ -49,6 +49,7 @@ final readonly class Definition
      * @param string $renderMode Component rendering mode: inline or block.
      * @param string $type Technical component type, such as buttons or link.
      * @param string $usage Prompt usage template. Supports {type} and {identifier} placeholders.
+     * @param string $elementName Custom element tag name for customElement mode.
      */
     public function __construct(
         public string $identifier,
@@ -62,6 +63,7 @@ final readonly class Definition
         public string $renderMode = 'block',
         public string $type = '',
         public string $usage = '',
+        public string $elementName = '',
     ) {
     }
 
@@ -93,6 +95,7 @@ final readonly class Definition
             'cssClass' => $this->cssClass,
             'title' => $this->title,
             'renderMode' => $this->renderMode,
+            'elementName' => $this->elementName,
         ];
     }
 
@@ -116,6 +119,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
+            $this->elementName,
         );
     }
 
@@ -149,6 +153,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
+            $this->elementName,
         );
     }
 
@@ -172,6 +177,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
+            $this->elementName,
         );
     }
 
@@ -195,6 +201,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
+            $this->elementName,
         );
     }
 
@@ -217,6 +224,8 @@ final readonly class Definition
             $this->title,
             $this->renderMode,
             trim($type),
+            $this->usage,
+            $this->elementName,
         );
     }
 
@@ -250,6 +259,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
+            trim((string)($overrides['elementName'] ?? $this->elementName)),
         )->withCssClass((string)($overrides['cssClass'] ?? ''));
     }
 }

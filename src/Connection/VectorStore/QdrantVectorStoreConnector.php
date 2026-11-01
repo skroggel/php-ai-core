@@ -36,6 +36,7 @@ use Madj2k\AiCore\Connection\VectorStore\DTO\VectorWriteResult;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterConjunction;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterGroup;
 use Madj2k\AiCore\Connection\VectorStore\Filter\DTO\FilterOperator;
+use Madj2k\AiCore\DTO\DocumentMetadata;
 use Madj2k\AiCore\Exception\VectorDatabaseException;
 use Psr\Log\LoggerInterface;
 use Qdrant\Models\Filter\Condition\MatchAny;
@@ -45,6 +46,7 @@ use Qdrant\Models\Filter\Filter;
 use Qdrant\Models\PointStruct;
 use Qdrant\Models\PointsStruct;
 use Qdrant\Models\Request\CreateCollection;
+use Qdrant\Models\Request\CreateIndex;
 use Qdrant\Models\Request\SearchRequest;
 use Qdrant\Models\Request\VectorParams;
 use Qdrant\Models\VectorStruct;
@@ -184,6 +186,7 @@ final class QdrantVectorStoreConnector implements VectorStoreConnectorInterface
                             ->info(),
                     );
                     $this->validateCollectionConfiguration($infoResponse, $collection);
+                    $this->ensurePayloadIndexes($connection, $collection, $infoResponse);
                     $this->validatedCollections[$cacheKey] = true;
                     return true;
                 }
@@ -211,6 +214,7 @@ final class QdrantVectorStoreConnector implements VectorStoreConnectorInterface
                     $created = (bool)$createResponse->offsetGet('result');
 
                     if ($created) {
+                        $this->ensurePayloadIndexes($connection, $collection);
                         $this->validatedCollections[$cacheKey] = true;
                         $this->logger->info('Qdrant collection created', [
                             'collection' => $collection->getName(),
@@ -604,6 +608,198 @@ final class QdrantVectorStoreConnector implements VectorStoreConnectorInterface
                 $collection->getVectorSize(),
                 $collection->getDistance(),
             ));
+        }
+    }
+
+
+    /**
+     * Ensures payload indexes for standard and configured additional metadata.
+     *
+     * Additional fields are configured under `payload_indexes` and are stored
+     * below the metadata `additional` container unless the full
+     * `meta.additional.` path is supplied.
+     *
+     * @param \Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface $connection
+     * @param \Madj2k\AiCore\Connection\VectorStore\DTO\VectorCollection $collection
+     * @param \Qdrant\Response|null $collectionInfo
+     * @return void
+     */
+    private function ensurePayloadIndexes(
+        VectorStoreConnectionConfigurationInterface $connection,
+        VectorCollection $collection,
+        ?\Qdrant\Response $collectionInfo = null,
+    ): void {
+        $existingIndexes = $this->resolveExistingPayloadIndexes($collectionInfo);
+        foreach ($this->resolvePayloadIndexDefinitions($connection) as $fieldName => $fieldSchema) {
+            if (isset($existingIndexes[$fieldName])) {
+                $existingSchema = $existingIndexes[$fieldName]['data_type']
+                    ?? $existingIndexes[$fieldName]['type']
+                    ?? null;
+                $expectedSchema = is_array($fieldSchema) ? ($fieldSchema['type'] ?? null) : $fieldSchema;
+                if ($existingSchema !== null && $existingSchema !== $expectedSchema) {
+                    throw new \UnexpectedValueException(sprintf(
+                        'Qdrant payload index "%s" uses schema "%s"; expected "%s". Recreate the collection.',
+                        $fieldName,
+                        (string)$existingSchema,
+                        (string)$expectedSchema,
+                    ));
+                }
+                continue;
+            }
+
+            $this->executeRequest(
+                'ensureCollection.payloadIndex',
+                fn () => $this->createClient($connection)
+                    ->collections($collection->getName())
+                    ->index()
+                    ->create(new CreateIndex($fieldName, $fieldSchema), ['wait' => 'true']),
+            );
+        }
+    }
+
+
+    /**
+     * Extracts existing Qdrant payload indexes from a collection info response.
+     *
+     * @param \Qdrant\Response|null $collectionInfo Collection info response.
+     * @return array<string, array<string, mixed>>
+     */
+    private function resolveExistingPayloadIndexes(?\Qdrant\Response $collectionInfo): array
+    {
+        if ($collectionInfo === null || !$collectionInfo->offsetExists('result')) {
+            return [];
+        }
+
+        $result = $collectionInfo->offsetGet('result');
+        $payloadSchema = is_array($result) ? ($result['payload_schema'] ?? []) : [];
+
+        return is_array($payloadSchema) ? $payloadSchema : [];
+    }
+
+
+    /**
+     * Resolves Qdrant payload indexes from DocumentMetadata and connection JSON.
+     *
+     * DocumentMetadata::toArray() is the source of truth for standard fields,
+     * so newly exported scalar metadata fields are indexed automatically.
+     *
+     * @param \Madj2k\AiCore\Connection\Configuration\VectorStoreConnectionConfigurationInterface $connection
+     * @return array<string, string|array<string, mixed>>
+     * @throws \InvalidArgumentException For invalid additional index options.
+     */
+    private function resolvePayloadIndexDefinitions(
+        VectorStoreConnectionConfigurationInterface $connection,
+    ): array {
+        $definitions = [];
+        foreach ((new DocumentMetadata())->toArray() as $fieldName => $value) {
+            if ($fieldName === 'additional') {
+                continue;
+            }
+
+            $schema = $this->resolvePayloadSchemaFromValue($value);
+            if ($schema !== null) {
+                $definitions['meta.' . $fieldName] = $schema;
+            }
+        }
+
+        $additionalIndexes = $connection->getAdditionalOptionsArray()['payload_indexes'] ?? [];
+        if ($additionalIndexes === null) {
+            return $definitions;
+        }
+        if (!is_array($additionalIndexes)) {
+            throw new \InvalidArgumentException(
+                'Vector store option "payload_indexes" must be a JSON object.',
+                1781002101,
+            );
+        }
+
+        foreach ($additionalIndexes as $fieldName => $schema) {
+            if (!is_string($fieldName) || trim($fieldName) === '') {
+                throw new \InvalidArgumentException(
+                    'Every payload index must define a non-empty field name.',
+                    1781002102,
+                );
+            }
+
+            $fieldName = trim($fieldName);
+            if (!str_starts_with($fieldName, 'meta.additional.')) {
+                $fieldName = 'meta.additional.' . ltrim($fieldName, '.');
+            }
+
+            $definitions[$fieldName] = $this->normalizePayloadSchema($schema, $fieldName);
+        }
+
+        return $definitions;
+    }
+
+
+    /**
+     * Maps a metadata value to the corresponding Qdrant scalar schema.
+     *
+     * @param mixed $value Metadata value.
+     * @return string|null Qdrant schema type.
+     */
+    private function resolvePayloadSchemaFromValue(mixed $value): ?string
+    {
+        return match (true) {
+            is_string($value) => 'keyword',
+            is_int($value) => 'integer',
+            is_float($value) => 'float',
+            is_bool($value) => 'bool',
+            default => null,
+        };
+    }
+
+
+    /**
+     * Validates one configured Qdrant payload schema.
+     *
+     * @param mixed $schema String schema or Qdrant schema options.
+     * @param string $fieldName Payload field name.
+     * @return string|array<string, mixed>
+     * @throws \InvalidArgumentException For unsupported schemas.
+     */
+    private function normalizePayloadSchema(mixed $schema, string $fieldName): string|array
+    {
+        if (is_string($schema)) {
+            $schema = trim($schema);
+            if ($schema === '') {
+                throw new \InvalidArgumentException(
+                    sprintf('Payload index "%s" must define a schema.', $fieldName),
+                    1781002103,
+                );
+            }
+
+            $this->assertSupportedPayloadSchema($schema, $fieldName);
+            return $schema;
+        }
+
+        if (is_array($schema) && isset($schema['type']) && is_string($schema['type'])) {
+            $schema['type'] = trim($schema['type']);
+            $this->assertSupportedPayloadSchema($schema['type'], $fieldName);
+            return $schema;
+        }
+
+        throw new \InvalidArgumentException(
+            sprintf('Payload index "%s" must use a schema string or object with a type.', $fieldName),
+            1781002104,
+        );
+    }
+
+
+    /**
+     * @param string $schema Qdrant payload schema type.
+     * @param string $fieldName Payload field name.
+     * @return void
+     * @throws \InvalidArgumentException For unsupported schemas.
+     */
+    private function assertSupportedPayloadSchema(string $schema, string $fieldName): void
+    {
+        if (!in_array($schema, ['bool', 'datetime', 'float', 'geo', 'integer', 'keyword', 'text', 'uuid'], true)) {
+            throw new \InvalidArgumentException(
+                sprintf('Unsupported Qdrant payload schema "%s" for field "%s".', $schema, $fieldName),
+                1781002105,
+            );
         }
     }
 

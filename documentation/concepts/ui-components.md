@@ -28,6 +28,24 @@ A `Definition` contains:
 - configured actions and prompt templates;
 - an optional wrapper CSS class.
 
+Definitions may also use the `customElement` render mode. In that mode the
+frontend definition supplies a registered custom-element tag through
+`elementName`; the configured template becomes the element's light-DOM
+children. Existing `block` and `inline` definitions are unchanged.
+
+Example definition:
+
+```text
+renderMode: customElement
+elementName: mv-card-slider
+template: <div data-label="{{label}}">{{text}}</div>
+```
+
+The host frontend must register `mv-card-slider` before or while the response
+is inserted. A normal Vue component is not compiled when it is inserted via
+`v-html`; use a Vue custom element adapter when the component needs Vue
+lifecycle or interactivity.
+
 Definitions are provided through `ProviderInterface`. The provider is the
 configuration source, not a service registry. A CMS or another host can load
 definitions from records, configuration files or code.

@@ -270,6 +270,7 @@ final class Pipeline
         return new AssistantResponse(
             answer: $answer,
             context: [
+                'originalQuery' => $context->getRequest()->getQuery(),
                 'currentQuery' => $context->getCurrentQuery(),
                 'answerContext' => $context->getRetrieval()->getAnswerContext(),
                 'retrievalCount' => $context->getRetrieval()->getDocumentCount(),

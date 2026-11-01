@@ -18,10 +18,7 @@ final class DecisionContractTest extends TestCase
     {
         $step = new PipelineStep(
             type: AssistantPipelineProcessorType::IntentSelector,
-            intentSelectionOutputTypes: [
-                'retriever',
-                'presentation_rules',
-            ],
+            decisionContracts: ['retrieval', 'presentationRules'],
         );
 
         $result = (new DecisionContract($this->parts()))->parse(<<<'JSON'
@@ -54,11 +51,51 @@ JSON, $step);
         self::assertNull($plainTextResult);
     }
 
+    public function testQueryOptimizerPromptContainsOnlyQueryContract(): void
+    {
+        $step = new PipelineStep(type: AssistantPipelineProcessorType::QueryOptimizer);
+
+        $instructions = (new DecisionContract($this->parts()))->getPromptInstructions($step);
+
+        self::assertStringContainsString('Return only this JSON structure: {"query":"","metadata":{}}', $instructions);
+        self::assertStringNotContainsString('"retrieval"', $instructions);
+        self::assertStringNotContainsString('"presentationRules"', $instructions);
+        self::assertStringNotContainsString('Available retrieval targets:', $instructions);
+    }
+
+    public function testQueryOptimizerPromptIncludesExplicitlyConfiguredOptionalContracts(): void
+    {
+        $step = new PipelineStep(
+            type: AssistantPipelineProcessorType::QueryOptimizer,
+            decisionContracts: ['retrieval', 'presentationRules'],
+        );
+
+        $instructions = (new DecisionContract($this->parts()))->getPromptInstructions($step);
+
+        self::assertStringContainsString('"query":""', $instructions);
+        self::assertStringContainsString('"retrieval"', $instructions);
+        self::assertStringContainsString('"presentationRules"', $instructions);
+    }
+
+    public function testIgnoresRetrievalDecisionWhenContractIsNotConfigured(): void
+    {
+        $step = new PipelineStep(type: AssistantPipelineProcessorType::QueryOptimizer);
+
+        $result = (new DecisionContract($this->parts()))->parse(
+            '{"query":"rewritten","retrieval":{"mode":"selected","targets":["detail"]}}',
+            $step,
+        );
+
+        self::assertNotNull($result);
+        self::assertSame('all', $result->retrievalPlan->mode);
+        self::assertSame([], $result->retrievalPlan->targets);
+    }
+
     public function testBuildsPayloadFilterUsingConfiguredConjunction(): void
     {
         $step = new PipelineStep(
             type: AssistantPipelineProcessorType::IntentSelector,
-            intentSelectionOutputTypes: ['retriever_payload'],
+            decisionContracts: ['retrieverPayload'],
             decisionPayloadField: 'meta.additional.category_ids',
             decisionPayloadConjunction: FilterConjunction::Or,
         );

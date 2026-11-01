@@ -10,6 +10,7 @@ use Madj2k\AiCore\Connection\Factory\QdrantClientFactoryInterface;
 use Madj2k\AiCore\Connection\Resilience\RetryPolicy;
 use Madj2k\AiCore\Connection\VectorStore\DTO\VectorCollection;
 use Madj2k\AiCore\Connection\VectorStore\DTO\VectorDocument;
+use Madj2k\AiCore\DTO\DocumentMetadata;
 use Madj2k\AiCore\Connection\VectorStore\QdrantVectorStoreConnector;
 use Madj2k\AiCore\Exception\VectorDatabaseException;
 use Madj2k\AiCore\Tests\Support\QueueHttpClient;
@@ -119,9 +120,18 @@ final class QdrantVectorStoreConnectorTest extends TestCase
 
     public function testCreatesCollectionWithConfiguredVectorParameters(): void
     {
+        $metadataIndexCount = count(array_filter(
+            (new DocumentMetadata())->toArray(),
+            static fn (mixed $value, string $field): bool => $field !== 'additional',
+            ARRAY_FILTER_USE_BOTH,
+        ));
         $httpClient = new QueueHttpClient([
             $this->jsonResponse(200, ['result' => ['exists' => false]]),
             $this->jsonResponse(200, ['result' => true]),
+            ...array_map(
+                fn (): Response => $this->jsonResponse(200, ['result' => true]),
+                range(1, $metadataIndexCount),
+            ),
         ]);
         $connector = new QdrantVectorStoreConnector(clientFactory: $this->factoryFor($httpClient));
 
@@ -133,6 +143,57 @@ final class QdrantVectorStoreConnectorTest extends TestCase
         $body = json_decode((string)$httpClient->requests[1]->getBody(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame(3072, $body['vectors']['documents']['size']);
         self::assertSame('Dot', $body['vectors']['documents']['distance']);
+        self::assertCount(2 + $metadataIndexCount, $httpClient->requests);
+
+        $indexBody = json_decode((string)$httpClient->requests[2]->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('meta.source_type', $indexBody['field_name']);
+        self::assertSame(['type' => 'keyword'], $indexBody['field_schema']);
+    }
+
+    public function testCreatesConfiguredAdditionalPayloadIndexes(): void
+    {
+        $metadataIndexCount = count(array_filter(
+            (new DocumentMetadata())->toArray(),
+            static fn (mixed $value, string $field): bool => $field !== 'additional',
+            ARRAY_FILTER_USE_BOTH,
+        ));
+        $httpClient = new QueueHttpClient([
+            $this->jsonResponse(200, ['result' => ['exists' => false]]),
+            $this->jsonResponse(200, ['result' => true]),
+            ...array_map(
+                fn (): Response => $this->jsonResponse(200, ['result' => true]),
+                range(1, $metadataIndexCount + 2),
+            ),
+        ]);
+        $connector = new QdrantVectorStoreConnector(clientFactory: $this->factoryFor($httpClient));
+        $connection = new VectorStoreConnectionConfiguration(
+            'https://qdrant.test',
+            additionalOptions: [
+                'payload_indexes' => [
+                    'asset_type' => 'keyword',
+                    'asset_id' => ['type' => 'integer'],
+                ],
+            ],
+        );
+
+        $connector->ensureCollection($connection, new VectorCollection('documents'));
+
+        $assetTypeBody = json_decode(
+            (string)$httpClient->requests[2 + $metadataIndexCount]->getBody(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $assetIdBody = json_decode(
+            (string)$httpClient->requests[3 + $metadataIndexCount]->getBody(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        self::assertSame('meta.additional.asset_type', $assetTypeBody['field_name']);
+        self::assertSame(['type' => 'keyword'], $assetTypeBody['field_schema']);
+        self::assertSame('meta.additional.asset_id', $assetIdBody['field_name']);
+        self::assertSame(['type' => 'integer'], $assetIdBody['field_schema']);
     }
 
     public function testRejectsExistingCollectionWithWrongVectorSize(): void
@@ -177,6 +238,27 @@ final class QdrantVectorStoreConnectorTest extends TestCase
         self::assertCount(2, $httpClient->requests);
     }
 
+    public function testAddsMissingPayloadIndexToExistingCollection(): void
+    {
+        $payloadSchema = $this->standardPayloadSchema();
+        unset($payloadSchema['meta.language']);
+        $httpClient = new QueueHttpClient([
+            $this->jsonResponse(200, ['result' => ['exists' => true]]),
+            $this->collectionInfo(payloadSchema: $payloadSchema),
+            $this->jsonResponse(200, ['result' => true]),
+        ]);
+        $connector = new QdrantVectorStoreConnector(clientFactory: $this->factoryFor($httpClient));
+
+        $connector->ensureCollection(
+            $this->connection(),
+            new VectorCollection('documents'),
+        );
+
+        $body = json_decode((string)$httpClient->requests[2]->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('meta.language', $body['field_name']);
+        self::assertSame(['type' => 'keyword'], $body['field_schema']);
+    }
+
     private function connection(): VectorStoreConnectionConfiguration
     {
         return new VectorStoreConnectionConfiguration('https://qdrant.test');
@@ -192,7 +274,14 @@ final class QdrantVectorStoreConnectorTest extends TestCase
         );
     }
 
-    private function collectionInfo(int $vectorSize = 1536, string $distance = 'Cosine'): Response
+    /**
+     * @param array<string, array{data_type:string}>|null $payloadSchema
+     */
+    private function collectionInfo(
+        int $vectorSize = 1536,
+        string $distance = 'Cosine',
+        ?array $payloadSchema = null,
+    ): Response
     {
         return $this->jsonResponse(200, [
             'result' => [
@@ -206,8 +295,35 @@ final class QdrantVectorStoreConnectorTest extends TestCase
                         ],
                     ],
                 ],
+                'payload_schema' => $payloadSchema ?? $this->standardPayloadSchema(),
             ],
         ]);
+    }
+
+    /**
+     * @return array<string, array{data_type:string}>
+     */
+    private function standardPayloadSchema(): array
+    {
+        $schema = [];
+        foreach ((new DocumentMetadata())->toArray() as $fieldName => $value) {
+            if ($fieldName === 'additional') {
+                continue;
+            }
+
+            $type = match (true) {
+                is_string($value) => 'keyword',
+                is_int($value) => 'integer',
+                is_float($value) => 'float',
+                is_bool($value) => 'bool',
+                default => null,
+            };
+            if ($type !== null) {
+                $schema['meta.' . $fieldName] = ['data_type' => $type];
+            }
+        }
+
+        return $schema;
     }
 
     private function factoryFor(QueueHttpClient $httpClient): QdrantClientFactoryInterface

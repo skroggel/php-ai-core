@@ -77,16 +77,8 @@ final readonly class DecisionContract implements ContractInterface
      */
     public function getPromptInstructions(?PipelineStepConfigurationInterface $step = null): string
     {
-        $outputs = $step?->getContracts() ?? ['retrieval', 'presentationRules'];
-        if ($step?->getType() === AssistantPipelineProcessorType::QueryOptimizer) {
-            $outputs = ['retrieval'];
-        }
-        if ($outputs === []) {
-            $outputs = [
-                'retrieval',
-                'presentationRules',
-            ];
-        }
+        $isQueryOptimizer = $step?->getType() === AssistantPipelineProcessorType::QueryOptimizer;
+        $outputs = $step?->getDecisionContracts() ?? [];
 
         $parts = [];
         foreach ($this->parts as $part) {
@@ -103,7 +95,7 @@ final readonly class DecisionContract implements ContractInterface
         }
 
         $contract = [];
-        if ($step?->getType() === AssistantPipelineProcessorType::QueryOptimizer) {
+        if ($isQueryOptimizer) {
             $contract['query'] = '';
         }
         if (in_array('retrieval', $outputs, true)) {
@@ -134,32 +126,49 @@ final readonly class DecisionContract implements ContractInterface
         string $raw,
         PipelineStepConfigurationInterface $step,
     ): ?DecisionResult {
-
         $value = trim($raw);
         $json = $this->decodeJson($value);
         if ($json === null) {
             return null;
         }
 
-        $retrieval = is_array($json['retrieval'] ?? null) ? $json['retrieval'] : [];
-        [$retrievalMode, $targets] = $this->parseSelection($retrieval, 'targets');
         $metadata = is_array($json['metadata'] ?? null) ? $json['metadata'] : [];
-        $isIntentSelector = $step->getType() === AssistantPipelineProcessorType::IntentSelector;
-        $contracts = $step->getContracts();
-        $includePresentationRules = $isIntentSelector && in_array('presentationRules', $contracts, true);
-        $includePayloadFilter = $isIntentSelector && in_array('retrieverPayload', $contracts, true);
-        $payloadFilter = $includePayloadFilter ? $this->parsePayloadFilter($json, $step) : null;
-        $payloadRetrievers = $includePayloadFilter
-            ? $step->getDecisionPayloadRetrievers()
-            : [];
+        $contracts = $step->getDecisionContracts();
 
+        // check which decision is needed
+        $includeRetrieval = in_array('retrieval', $contracts, true);
+        $includePresentationRules = in_array('presentationRules', $contracts, true);
+        $includePayloadFilter = in_array('retrieverPayload', $contracts, true);
+
+        // payload filters
+        $payloadFilter = null;
+        $payloadRetrievers = [];
+        if ($includePayloadFilter) {
+            $payloadFilter = $this->parsePayloadFilter($json, $step);
+            $payloadRetrievers = $step->getDecisionPayloadRetrievers();
+        }
+
+        // retrieval plan
         $retrievalPlan = new RetrievalPlan(
-            $retrievalMode,
-            $targets,
-            $metadata,
-            $payloadFilter,
-            $payloadRetrievers,
+            metadata: $metadata,
+            payloadFilter: $payloadFilter,
+            payloadRetrievers: $payloadRetrievers,
         );
+        if ($includeRetrieval) {
+            $retrieval = is_array($json['retrieval'] ?? null)
+                ? $json['retrieval']
+                : [];
+            [$retrievalMode, $targets] = $this->parseSelection($retrieval, 'targets');
+            $retrievalPlan = new RetrievalPlan(
+                $retrievalMode,
+                $targets,
+                $metadata,
+                $payloadFilter,
+                $payloadRetrievers,
+            );
+        }
+
+        // presenation plan
         $presentationPlan = new PresentationRulePlan();
         if ($includePresentationRules) {
             $presentationRules = is_array($json['presentationRules'] ?? null)

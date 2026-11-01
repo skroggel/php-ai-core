@@ -66,15 +66,15 @@ The `retrieval` and `presentationRules` areas support `all`, `selected`,
 path, target retrievers and `and`/`or` conjunction are supplied by pipeline
 configuration. The model supplies values, not filter logic.
 
-Missing or invalid areas retain the configured default. In an empty legacy
-configuration, retrieval and presentation-rule selection are enabled and
-payload filtering is disabled. The intent context lists the available target
-and rule identifiers and, when payload filtering is enabled, the configured
-payload field path.
+Missing or invalid areas retain the configured default. Only explicitly
+configured decision contracts are included in the prompt and parsed from the
+response. The intent context lists available target and rule identifiers only
+when the corresponding decision contract is enabled; payload filtering also
+requires the `retrieverPayload` contract.
 
 The same decision contract is also used by `QueryOptimizerProcessor`. Its
-response adds the optimized `query` and uses the retrieval area to control
-subsequent retrieval steps:
+response always contains the optimized `query`; optional retrieval or payload
+areas are included only when explicitly configured:
 
 ```json
 {

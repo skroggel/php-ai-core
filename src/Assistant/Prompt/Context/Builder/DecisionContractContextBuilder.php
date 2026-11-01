@@ -71,7 +71,7 @@ final class DecisionContractContextBuilder extends AbstractContextBuilder
             $lines[] = $step->getDecisionMetadata();
         }
 
-        return [new PromptSection('Output Contract Decisions', implode("\n", $lines), 70)];
+        return [new PromptSection('Response Contract Decisions', implode("\n", $lines), 70)];
     }
 
 }

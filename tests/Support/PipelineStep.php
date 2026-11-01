@@ -40,9 +40,10 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         private ?VectorStoreConnectionConfigurationInterface $retrievalVectorStoreConnection = null,
         private string $retrievalCollection = '',
         private array $presentationRuleIdentifiers = [],
-        private string $retrievalIdentifier = '',
-        private array $intentSelectionOutputTypes = [],
-        private string $decisionPayloadField = '',
+         private string $retrievalIdentifier = '',
+         private array $intentSelectionOutputTypes = [],
+         private array $decisionContracts = [],
+         private string $decisionPayloadField = '',
         private FilterConjunction $decisionPayloadConjunction = FilterConjunction::And,
     ) {
     }
@@ -70,7 +71,7 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         return array_values(array_filter($contracts));
     }
     /** @return array<int,string> */
-    public function getDecisionContracts(): array { return []; }
+    public function getDecisionContracts(): array { return $this->decisionContracts; }
     public function getDecisionPayloadField(): string { return $this->decisionPayloadField; }
     /** @return array<int,string> */
     public function getDecisionPayloadRetrievers(): array { return []; }
