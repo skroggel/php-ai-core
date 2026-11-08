@@ -30,6 +30,7 @@ use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\ProcessorStreamingInterface;
 use Madj2k\AiCore\Assistant\Pipeline\Registry\ProcessorRegistry;
+use Madj2k\AiCore\Exception\AppException;
 use Madj2k\AiCore\Exception\ApiException;
 use Madj2k\AiCore\Exception\VectorDatabaseException;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
@@ -144,40 +145,50 @@ final class Pipeline
          * @var \Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface $step
          */
         foreach ($steps as $stepIndex => $step) {
+
             if ($step->getPromptMetadataFieldList() !== []) {
                 $sourceFields = $step->getPromptMetadataFieldList();
             }
 
             $processor = $this->processorRegistry->get($step->getProcessorIdentifier(), $step->getType());
 
-            if (!$processor->canProcess($context, $step)) {
-                $payload = [
-                    'step_uid' => (int)$step->getUid(),
-                    'step_title' => $step->getTitle(),
-                    'processor_type' => $step->getType()->value,
-                    'reason' => 'Required context slot missing or execution blocked.',
-                ];
-
-                if ($logContext instanceof PipelineLogMetaData) {
-                    $this->pipelineLogger->event('step.skipped', $logContext, $payload);
-                }
-                continue;
-            }
-
-            $startedAt = null;
-            if ($logContext instanceof PipelineLogMetaData) {
-                $startedAt = $this->pipelineLogger->startStep(
-                    $logContext,
-                    $step->getTitle(),
-                    $step->getType()->value,
-                    [
-                        'step_uid' => (int)$step->getUid(),
-                        'stage' => $step->getStage()->value,
-                    ]
-                );
-            }
-
             try {
+                if (!$processor->canProcess($context, $step)) {
+
+                    if ($step->getFailureStrategy() !== AssistantPipelineFailureStrategy::Stop) {
+                        if ($logContext instanceof PipelineLogMetaData) {
+                            $this->pipelineLogger->event('step.skipped', $logContext, [
+                                'step_uid' => (int)$step->getUid(),
+                                'step_title' => $step->getTitle(),
+                                'processor_type' => $step->getType()->value,
+                                'reason' => 'Required context slot missing or execution is blocked.',
+                            ]);
+                        }
+                        continue;
+                    }
+
+                    throw new AppException(
+                        sprintf(
+                        'Pipeline step "%s" cannot process: required context slot is missing or execution is blocked.',
+                            $step->getTitle(),
+                        ),
+                        1793530001
+                    );
+                }
+
+                $startedAt = null;
+                if ($logContext instanceof PipelineLogMetaData) {
+                    $startedAt = $this->pipelineLogger->startStep(
+                        $logContext,
+                        $step->getTitle(),
+                        $step->getType()->value,
+                        [
+                            'step_uid' => (int)$step->getUid(),
+                            'stage' => $step->getStage()->value,
+                        ]
+                    );
+                }
+
                 if (
                     $stepIndex === $visibleAnswerStepIndex
                     && $streamCallback !== null
@@ -200,6 +211,7 @@ final class Pipeline
                         ]
                     );
                 }
+
             } catch (\Throwable $exception) {
                 if ($logContext instanceof PipelineLogMetaData) {
                     $this->pipelineLogger->error('step.failed', $logContext, [
@@ -214,8 +226,7 @@ final class Pipeline
                 if (
                     $exception instanceof ApiException
                     || $exception instanceof VectorDatabaseException
-                    ||
-                    $step->getFailureStrategy() === AssistantPipelineFailureStrategy::Stop
+                    || $step->getFailureStrategy() === AssistantPipelineFailureStrategy::Stop
                     || ($stepIndex === $visibleAnswerStepIndex && $streamedData)
                 ) {
                     throw $exception;

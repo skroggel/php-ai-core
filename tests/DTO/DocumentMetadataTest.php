@@ -57,6 +57,19 @@ final class DocumentMetadataTest extends TestCase
         self::assertSame('page:42', $restored->getSourceGroupIdentifier());
     }
 
+    public function testDotNotationReadsNestedAdditionalMetadata(): void
+    {
+        $metadata = new DocumentMetadata(title: 'NFC Raw Material Portfolio');
+        $metadata->addAdditional('regions', ['Europe']);
+        $metadata->addAdditional('ingredients', ['Fruit ingredients']);
+
+        self::assertSame(['Europe'], $metadata->getValue('additional.regions'));
+        self::assertSame(
+            ['additional.regions' => ['Europe'], 'additional.ingredients' => ['Fruit ingredients']],
+            $metadata->toSelectedArray(['additional.regions', 'additional.ingredients']),
+        );
+    }
+
     public function testSingleDocumentUsesSameSourceAndGroupHash(): void
     {
         $document = new IndexableDocument('single', new DocumentMetadata('file', '/single.txt'));

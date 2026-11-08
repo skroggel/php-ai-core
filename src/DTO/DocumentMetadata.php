@@ -474,6 +474,20 @@ class DocumentMetadata
      */
     public function getValue(string $field): mixed
     {
+        if (str_contains($field, '.')) {
+            $segments = explode('.', $field);
+            $value = $this->getValue((string)array_shift($segments));
+
+            foreach ($segments as $segment) {
+                if (!is_array($value) || !array_key_exists($segment, $value)) {
+                    return null;
+                }
+                $value = $value[$segment];
+            }
+
+            return $value;
+        }
+
         return match ($field) {
             'source_type', 'sourceType' => $this->sourceType,
             'source_identifier', 'source_id', 'sourceIdentifier' => $this->sourceIdentifier,

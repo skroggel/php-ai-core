@@ -37,6 +37,8 @@ use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRule;
 use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
 use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
 use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
+use Madj2k\AiCore\Assistant\Contract\ContractRegistry;
+use Madj2k\AiCore\Assistant\Contract\DefaultContract;
 
 /**
  * Class PipelineMarkdownExporter
@@ -68,14 +70,17 @@ final class PipelineMarkdownExporter
      * Constructor
      *
      * @param \Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry|null $contextBuilderRegistry
+     * @param \Madj2k\AiCore\Assistant\Contract\ContractRegistry|null $contractRegistry
      */
     public function __construct(
         private readonly ?ContextBuilderRegistry $contextBuilderRegistry = null,
+        private readonly ?ContractRegistry $contractRegistry = null,
     ) {
         $this->promptFormatter = new Formatter();
         $this->promptBuilder = new PromptBuilder(
             $this->contextBuilderRegistry ?? new ContextBuilderRegistry([]),
             $this->promptFormatter,
+            $this->contractRegistry ?? new ContractRegistry([new DefaultContract()]),
         );
     }
 

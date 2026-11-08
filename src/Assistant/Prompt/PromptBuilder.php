@@ -23,12 +23,17 @@ namespace Madj2k\AiCore\Assistant\Prompt;
 
 use Madj2k\AiCore\Assistant\Context\Context;
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
+use Madj2k\AiCore\Assistant\Contract\ContractRegistry;
+use Madj2k\AiCore\Assistant\Contract\DecisionContract;
+use Madj2k\AiCore\Assistant\Contract\DefaultContract;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\PromptType;
+use Madj2k\AiCore\Assistant\Presentation\Rules\PresentationRuleProviderInterface;
 use Madj2k\AiCore\Assistant\Prompt\Context\Formatter;
 use Madj2k\AiCore\Assistant\Prompt\Context\PromptSection;
 use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
+use Madj2k\AiCore\Assistant\Retrieval\RetrievalTargetProviderInterface;
 
 /**
  * Class PromptBuilder
@@ -54,12 +59,16 @@ use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
  */
 final class PromptBuilder
 {
+
     /**
-     * constructor
+     * @param \Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry $contextBuilderRegistry
+     * @param \Madj2k\AiCore\Assistant\Prompt\Context\Formatter $contextFormatter
+     * @param \Madj2k\AiCore\Assistant\Contract\ContractRegistry $contractRegistry
      */
     public function __construct(
         private readonly ContextBuilderRegistry $contextBuilderRegistry,
         private readonly Formatter $contextFormatter,
+        private ContractRegistry $contractRegistry,
     ) {
     }
 
@@ -123,6 +132,8 @@ final class PromptBuilder
     private function buildSystemPrompt(Context $context, PipelineStepConfigurationInterface $step): string
     {
         $assistant = $context->getAssistant();
+        $contract = $this->contractRegistry->resolveForStep($step);
+
         $parts = [];
         $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
             $context,
@@ -154,15 +165,18 @@ final class PromptBuilder
             $step->getStepRetrievalRules(),
         ));
 
-        $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
-            $context,
-            $step,
-            PromptType::Output,
-            'Global Assistant Output Rules',
-            $step->getIncludeOutputRules() ? $assistant->getOutputRules() : '',
-            'Step Output Rules',
-            $step->getStepOutputRules(),
-        ));
+        // only in default contract mode
+        if ($contract instanceof DefaultContract) {
+            $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
+                $context,
+                $step,
+                PromptType::Output,
+                'Global Assistant Output Rules',
+                $step->getIncludeOutputRules() ? $assistant->getOutputRules() : '',
+                'Step Output Rules',
+                $step->getStepOutputRules(),
+            ));
+        }
 
         $parts = array_merge($parts, $this->buildSystemPromptTypeSections(
             $context,
@@ -174,12 +188,13 @@ final class PromptBuilder
             '',
         ));
 
-        // Forward enabled runtime options to the language model as prompt instructions.
-        if (in_array($step->getType(), [
-            AssistantPipelineProcessorType::AnswerGenerator,
-            AssistantPipelineProcessorType::QualityGate,
+        // Forward response-language and accessibility options only to steps
+        // that produce user-facing or final answer content. intent selectors must not receive these instructions.
+        if (!in_array($step->getType(), [
+            AssistantPipelineProcessorType::IntentSelector,
         ], true)) {
             $chatOptions = $context->getRequest()->getChatOptions();
+            $hasRuntimeInstructions = $chatOptions->responseLanguage !== '' || $chatOptions->plainLanguage;
             if ($chatOptions->responseLanguage !== '') {
                 $parts[] = new PromptSection('Response Language', "Respond in this language: "
                     . $chatOptions->responseLanguage
@@ -191,13 +206,14 @@ final class PromptBuilder
                     'Use plain language. Prefer familiar words, short sentences, short paragraphs and a clear structure. Explain unavoidable technical terms.'
                 );
             }
+            if ($hasRuntimeInstructions) {
+                $parts[] = new PromptSection('Priority Instructions',
+                    'Runtime response language and accessibility requirements take priority over assistant and step output preferences.' .
+                    'Step rules may specialize global assistant rules but must not weaken their safety, privacy, thematic restrictions or factual-source requirements. ' .
+                    'For other conflicts, step rules take priority over global assistant rules.'
+                );
+            }
         }
-
-        $parts[] = new PromptSection('Priority Instructions',
-            'Runtime response language and accessibility requirements take priority over assistant and step output preferences.' .
-            'Step rules may specialize global assistant rules but must not weaken their safety, privacy, thematic restrictions or factual-source requirements. ' .
-            'For other conflicts, step rules take priority over global assistant rules.'
-        );
 
         return $this->contextFormatter->format(array_filter($parts));
     }

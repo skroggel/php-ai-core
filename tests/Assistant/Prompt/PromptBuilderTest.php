@@ -12,6 +12,7 @@ use Madj2k\AiCore\Assistant\Context\Request\History;
 use Madj2k\AiCore\Assistant\Context\Request\Request;
 use Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalResult;
 use Madj2k\AiCore\Assistant\Context\Trace\ProcessingTrace;
+use Madj2k\AiCore\Assistant\Contract\DefaultContract;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Enum\HistoryMode;
 use Madj2k\AiCore\Assistant\DTO\ChatOptions;
@@ -22,6 +23,7 @@ use Madj2k\AiCore\Assistant\Enum\PromptRole;
 use Madj2k\AiCore\Assistant\Enum\PromptType;
 use Madj2k\AiCore\Assistant\Prompt\Context\Registry\ContextBuilderRegistry;
 use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
+use Madj2k\AiCore\Assistant\Contract\ContractRegistry;
 use Madj2k\AiCore\Assistant\Export\PipelineMarkdownExporter;
 use Madj2k\AiCore\Tests\Support\PipelineStep;
 use PHPUnit\Framework\TestCase;
@@ -87,6 +89,7 @@ final class PromptBuilderTest extends TestCase
         $promptBuilder = new PromptBuilder(
             new ContextBuilderRegistry([$builder]),
             new Formatter(),
+            new ContractRegistry([new DefaultContract()]),
         );
         $step = new PipelineStep(
             historyMode: HistoryMode::LastN,
@@ -133,6 +136,7 @@ final class PromptBuilderTest extends TestCase
         $promptBuilder = new PromptBuilder(
             new ContextBuilderRegistry([]),
             new Formatter(),
+            new ContractRegistry([new DefaultContract()]),
         );
 
         $answerMessages = $promptBuilder->buildMessages(

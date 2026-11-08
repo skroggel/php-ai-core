@@ -42,7 +42,11 @@ JSON));
 
         $processor = new QueryOptimizerProcessor(
             new AiConnectorResolver([$connector]),
-            new PromptBuilder(new ContextBuilderRegistry([]), new Formatter()),
+            new PromptBuilder(
+                new ContextBuilderRegistry([]),
+                new Formatter(),
+                new ContractRegistry([]),
+            ),
             new ContractRegistry([new DecisionContract([])]),
             $this->createStub(PipelineLoggerInterface::class),
         );
