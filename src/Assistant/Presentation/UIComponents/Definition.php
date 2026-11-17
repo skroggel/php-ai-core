@@ -46,10 +46,10 @@ final readonly class Definition
      * @param array<int,string> $placeholders Component and context placeholders.
      * @param string $cssClass Additional CSS class for the component wrapper.
      * @param string $title Human-readable component title.
-     * @param string $renderMode Component rendering mode: inline or block.
+     * @param string $renderMode Component rendering mode: inline, block or container.
      * @param string $type Technical component type, such as buttons or link.
      * @param string $usage Prompt usage template. Supports {type} and {identifier} placeholders.
-     * @param string $elementName Custom element tag name for customElement mode.
+     * @param string $tagName Optional tag name for block or inline rendering.
      */
     public function __construct(
         public string $identifier,
@@ -63,7 +63,7 @@ final readonly class Definition
         public string $renderMode = 'block',
         public string $type = '',
         public string $usage = '',
-        public string $elementName = '',
+        public string $tagName = '',
     ) {
     }
 
@@ -95,7 +95,7 @@ final readonly class Definition
             'cssClass' => $this->cssClass,
             'title' => $this->title,
             'renderMode' => $this->renderMode,
-            'elementName' => $this->elementName,
+            'tagName' => $this->tagName,
         ];
     }
 
@@ -119,7 +119,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
-            $this->elementName,
+            $this->tagName,
         );
     }
 
@@ -150,10 +150,12 @@ final readonly class Definition
             $this->placeholders,
             implode(' ', $classes),
             $this->title,
-            $this->renderMode,
+            trim((string)($overrides['renderMode'] ?? '')) !== ''
+                ? trim((string)$overrides['renderMode'])
+                : $this->renderMode,
             $this->type,
             $this->usage,
-            $this->elementName,
+            $this->tagName,
         );
     }
 
@@ -177,7 +179,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
-            $this->elementName,
+            $this->tagName,
         );
     }
 
@@ -201,7 +203,7 @@ final readonly class Definition
             $this->renderMode,
             $this->type,
             $this->usage,
-            $this->elementName,
+            $this->tagName,
         );
     }
 
@@ -225,7 +227,7 @@ final readonly class Definition
             $this->renderMode,
             trim($type),
             $this->usage,
-            $this->elementName,
+            $this->tagName,
         );
     }
 
@@ -256,10 +258,12 @@ final readonly class Definition
                 : $this->placeholders,
             $this->cssClass,
             $this->title,
-            $this->renderMode,
+            trim((string)($overrides['renderMode'] ?? '')) !== ''
+                ? trim((string)$overrides['renderMode'])
+                : $this->renderMode,
             $this->type,
             $this->usage,
-            trim((string)($overrides['elementName'] ?? $this->elementName)),
+            trim((string)($overrides['tagName'] ?? $this->tagName)),
         )->withCssClass((string)($overrides['cssClass'] ?? ''));
     }
 }

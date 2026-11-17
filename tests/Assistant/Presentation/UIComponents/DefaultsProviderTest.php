@@ -52,6 +52,7 @@ final class DefaultsProviderTest extends TestCase
         );
 
         self::assertSame([
+            'container',
             'select-list',
             'link-list',
             'link',
@@ -60,6 +61,22 @@ final class DefaultsProviderTest extends TestCase
             'decorative',
             'headline',
         ], $identifiers);
+    }
+
+    /**
+     * Tests the structural container marker definitions.
+     *
+     * @return void
+     */
+    public function testProvidesContainerDefinition(): void
+    {
+        $provider = new Provider();
+
+        self::assertSame('container', $provider->get('container')->renderMode);
+        self::assertSame(
+            ['class' => ['type' => 'string']],
+            $provider->get('container')->dataSchema,
+        );
     }
 
     /**

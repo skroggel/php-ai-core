@@ -88,6 +88,7 @@ final class UIComponentsContextBuilder extends AbstractContextBuilder
             'Output each UI component directly using its documented self-contained @@UI_COMPONENT JSON syntax, without code fences.',
             'Select each component by its configured identifier and provide variable data only through its declared data fields. Configured actions and their properties are resolved by the runtime and must not be generated or overridden.',
             'A UI component is a complete output element. Never use it as a URL or Markdown link destination, wrap it in Markdown link syntax or HTML, or duplicate content it renders itself.',
+            'The structural container component is the exception: emit it before each grouped block. A new container closes the previous one, and the final response closes the last open container automatically.',
             'Follow the applicable output instructions for link format and placement. Do not assume that links must always use either Markdown or a UI component.',
             'Definition headings, boundary markers, names, schemas and syntax documentation are internal and must not appear in the answer.',
         ] : [];
