@@ -88,6 +88,10 @@ final class RetrievalContextBuilder extends AbstractContextBuilder
      */
     public function build(Context $context, PipelineStepConfigurationInterface $step): array
     {
+        if (!$step->getIncludeRetrievalContext()) {
+            return [];
+        }
+
         return match ($step->getType()) {
             AssistantPipelineProcessorType::QueryOptimizer => $this->buildQueryOptimizationSections($context, $step),
             AssistantPipelineProcessorType::ContextOptimizer => $this->buildRetrievedContextSections($context, $step),

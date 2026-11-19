@@ -43,14 +43,18 @@ Example definition:
 
 ```text
 renderMode: block
-tagName: custom-card-slider
+tagName: custom-slider
 template: <div data-label="{{label}}">{{text}}</div>
 ```
 
-The host frontend must register `custom-card-slider` before or while the response
+The host frontend must register `custom-slider` before or while the response
 is inserted. A normal Vue component is not compiled when it is inserted via
 `v-html`; use a Vue custom element adapter when the component needs Vue
 lifecycle or interactivity.
+
+The built-in `headline` definition accepts `text` and an optional `type`. The
+type must be one of `h1` through `h6`; missing or invalid values fall back to
+`h2`.
 
 Definitions are provided through `ProviderInterface`. The provider is the
 configuration source, not a service registry. A CMS or another host can load

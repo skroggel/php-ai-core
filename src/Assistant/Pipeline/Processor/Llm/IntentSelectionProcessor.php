@@ -88,7 +88,7 @@ final class IntentSelectionProcessor extends AbstractLlmProcessor
             return;
         }
 
-        $contracts = $step->getContracts();
+        $contracts = $step->getDecisionContracts();
         if (in_array('retrieval', $contracts, true)) {
             $context->setRetrievalPlan($decision->retrievalPlan);
         }

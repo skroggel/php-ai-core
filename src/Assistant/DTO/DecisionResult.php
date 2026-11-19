@@ -38,8 +38,8 @@ final readonly class DecisionResult
      * Constructor.
      *
      * @param string $query Optimized query.
-     * @param \Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalPlan Retrieval plan.
-     * @param \Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan Presentation rule plan.
+     * @param \Madj2k\AiCore\Assistant\Context\Retrieval\RetrievalPlan $retrievalPlan Retrieval plan.
+     * @param \Madj2k\AiCore\Assistant\Context\Presentation\PresentationRulePlan $presentationRulePlan Presentation rule plan.
      */
     public function __construct(
         public string $query,

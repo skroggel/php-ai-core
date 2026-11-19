@@ -104,6 +104,10 @@ final class ContractRegistry
             return new \Madj2k\AiCore\Assistant\Contract\DecisionContract($parts);
         }
 
+        if ($step->getType() === AssistantPipelineProcessorType::QualityGate) {
+            return new QualityGateContract();
+        }
+
         foreach ($this->contracts as $contract) {
             if ($contract->getIdentifier() === 'default') {
                 continue;

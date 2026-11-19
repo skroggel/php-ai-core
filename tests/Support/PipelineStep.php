@@ -29,6 +29,7 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
         private bool $includeIdentity = false,
         private bool $includeBehavior = false,
         private bool $includeRetrieval = false,
+        private bool $includeRetrievalContext = true,
         private bool $includeOutput = false,
         private string $stepIdentity = '',
         private string $stepBehavior = '',
@@ -56,20 +57,6 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
     /** @return array<int,string> */
     public function getIntentSelectionOutputTypes(): array { return $this->intentSelectionOutputTypes; }
     /** @return array<int,string> */
-    public function getContracts(): array
-    {
-        $contracts = [];
-        foreach ($this->intentSelectionOutputTypes as $type) {
-            $contracts[] = match ($type) {
-                'retriever' => 'retrieval',
-                'presentation_rules' => 'presentationRules',
-                'retriever_payload' => 'retrieverPayload',
-                default => '',
-            };
-        }
-
-        return array_values(array_filter($contracts));
-    }
     /** @return array<int,string> */
     public function getDecisionContracts(): array { return $this->decisionContracts; }
     public function getDecisionPayloadField(): string { return $this->decisionPayloadField; }
@@ -82,6 +69,7 @@ final readonly class PipelineStep implements PipelineStepConfigurationInterface
     public function getIncludeIdentityPrompt(): bool { return $this->includeIdentity; }
     public function getIncludeBehaviorRules(): bool { return $this->includeBehavior; }
     public function getIncludeRetrievalRules(): bool { return $this->includeRetrieval; }
+    public function getIncludeRetrievalContext(): bool { return $this->includeRetrievalContext; }
     public function getIncludeOutputRules(): bool { return $this->includeOutput; }
     public function getStepIdentity(): string { return $this->stepIdentity; }
     public function getStepBehaviorRules(): string { return $this->stepBehavior; }

@@ -190,8 +190,9 @@ final class PromptBuilder
 
         // Forward response-language and accessibility options only to steps
         // that produce user-facing or final answer content. intent selectors must not receive these instructions.
-        if (!in_array($step->getType(), [
-            AssistantPipelineProcessorType::IntentSelector,
+        if (in_array($step->getType(), [
+            AssistantPipelineProcessorType::AnswerGenerator,
+            AssistantPipelineProcessorType::QualityGate,
         ], true)) {
             $chatOptions = $context->getRequest()->getChatOptions();
             $hasRuntimeInstructions = $chatOptions->responseLanguage !== '' || $chatOptions->plainLanguage;

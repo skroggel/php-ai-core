@@ -23,6 +23,8 @@ namespace Madj2k\AiCore\Assistant\Pipeline\Processor\Llm;
 
 use Madj2k\AiCore\Assistant\Configuration\PipelineStepConfigurationInterface;
 use Madj2k\AiCore\Assistant\Context\Context;
+use Madj2k\AiCore\Assistant\Contract\QualityGateContract;
+use Madj2k\AiCore\Assistant\DTO\QualityGateDecision;
 use Madj2k\AiCore\Assistant\Enum\AssistantPipelineProcessorType;
 use Madj2k\AiCore\Assistant\Log\PipelineLogMetaData;
 use Madj2k\AiCore\Assistant\Log\PipelineLoggerInterface;
@@ -30,6 +32,7 @@ use Madj2k\AiCore\Assistant\Pipeline\Processor\AbstractLlmProcessor;
 use Madj2k\AiCore\Assistant\Pipeline\Processor\ProcessorStreamingInterface;
 use Madj2k\AiCore\Assistant\Prompt\PromptBuilder;
 use Madj2k\AiCore\Connection\Resolver\AiConnectorResolver;
+use Madj2k\AiCore\Exception\AppException;
 
 /**
  * Class QualityGateProcessor
@@ -78,8 +81,8 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
     public function process(Context $context, PipelineStepConfigurationInterface $step, ?PipelineLogMetaData $logContext = null): void
     {
         $messages = $this->promptBuilder->buildMessages($context, $step);
-        $answer = (string)$this->callAi($context, $messages, $step, $logContext);
-        $context->getAnswer()->setFinal($answer !== '' ? $answer : $context->getAnswer()->getCandidate());
+        $decision = $this->callAi($context, $messages, $step, $logContext);
+        $answer = $this->applyDecision($context, $decision);
 
         // trace
         $context->getProcessingTrace()->add('quality_gate.completed',
@@ -92,6 +95,7 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
 
     /**
      * @inheritDoc
+     * @throws \Madj2k\AiCore\Exception\AppException
      */
     public function processStream(
         Context $context,
@@ -101,8 +105,43 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
     ): void {
 
         $messages = $this->promptBuilder->buildMessages($context, $step);
-        $answer = $this->callAiStream($context, $messages, $step, $onData, $logContext);
-        $context->getAnswer()->setFinal($answer !== '' ? $answer : $context->getAnswer()->getCandidate());
+        $contract = $this->contractRegistry->resolveForStep($step);
+        if (!$contract instanceof QualityGateContract) {
+            throw new AppException('Quality Gate contract could not be resolved.', 1793531002);
+        }
+
+        // Buffer only the possible KEEP sentinel. Replacement text is forwarded
+        // as soon as it can no longer be the exact sentinel.
+        $rawDecision = '';
+        $pending = '';
+        $replacementStarted = false;
+        $rawDecision = $this->callAiStream(
+            $context,
+            $messages,
+            $step,
+            function (string $chunk) use (&$rawDecision, &$pending, &$replacementStarted, $onData, $contract): void {
+                $rawDecision .= $chunk;
+                if ($replacementStarted) {
+                    $onData($chunk);
+                    return;
+                }
+
+                $pending .= $chunk;
+                $probe = ltrim($pending);
+                if ($probe !== '' && !$contract->isKeepPrefix($probe)) {
+                    $replacementStarted = true;
+                    $onData($pending);
+                    $pending = '';
+                }
+            },
+            $logContext,
+        );
+
+        $decision = $contract->parse($rawDecision, $step);
+        $answer = $this->applyDecision($context, $decision);
+        if (!$replacementStarted) {
+            $this->emitAnswerChunks($answer, $onData);
+        }
 
         // trace
         $context->getProcessingTrace()->add('quality_gate.completed',
@@ -110,6 +149,42 @@ final class QualityGateProcessor extends AbstractLlmProcessor implements Process
             $messages,
             $context->getAnswer()->getFinal()
         );
+    }
+
+    /**
+     * Applies one validated Quality Gate decision to the answer state.
+     *
+     * @param Context $context Assistant context.
+     * @param mixed $decision Parsed contract result.
+     * @return string Final answer.
+     * @throws AppException When the contract result is invalid.
+     */
+    private function applyDecision(Context $context, mixed $decision): string
+    {
+        if (!$decision instanceof QualityGateDecision) {
+            throw new AppException('Quality Gate returned an invalid decision contract.', 1793531001);
+        }
+
+        $answer = $decision->decision === 'keep'
+            ? $context->getAnswer()->getCandidate()
+            : (string)$decision->answer;
+        $context->getAnswer()->setFinal($answer);
+
+        return $context->getAnswer()->getFinal();
+    }
+
+    /**
+     * Emits the validated final answer in UTF-8-safe chunks.
+     *
+     * @param string $answer Final answer.
+     * @param callable $onData Streaming callback.
+     * @return void
+     */
+    private function emitAnswerChunks(string $answer, callable $onData): void
+    {
+        foreach (mb_str_split($answer, 80) as $chunk) {
+            $onData($chunk);
+        }
     }
 
 }

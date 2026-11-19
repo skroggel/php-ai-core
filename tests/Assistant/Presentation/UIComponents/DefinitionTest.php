@@ -30,13 +30,13 @@ final class DefinitionTest extends TestCase
             description: 'Card slider',
             template: '<div>{{text}}</div>',
             renderMode: 'block',
-            tagName: 'custom-card-slider',
+            tagName: 'custom-slider',
         );
 
         $serialized = $definition->toArray();
 
         self::assertSame('block', $serialized['renderMode']);
-        self::assertSame('custom-card-slider', $serialized['tagName']);
+        self::assertSame('custom-slider', $serialized['tagName']);
     }
 
     /**
@@ -50,13 +50,13 @@ final class DefinitionTest extends TestCase
             identifier: 'card_slider',
             description: 'Card slider',
             renderMode: 'block',
-            tagName: 'custom-card-slider',
+            tagName: 'custom-slider',
         );
 
         $copy = $definition->withCssClass('custom-slider');
 
         self::assertSame('block', $copy->renderMode);
-        self::assertSame('custom-card-slider', $copy->tagName);
+        self::assertSame('custom-slider', $copy->tagName);
         self::assertSame('custom-slider', $copy->cssClass);
     }
 }

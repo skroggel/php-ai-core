@@ -114,6 +114,14 @@ interface PipelineStepConfigurationInterface
 
 
     /**
+     * Determines whether retrieved context is included in the step prompt.
+     *
+     * @return bool
+     */
+    public function getIncludeRetrievalContext(): bool;
+
+
+    /**
      * Determines whether the global output rules are included.
      *
      * @return bool
@@ -158,14 +166,6 @@ interface PipelineStepConfigurationInterface
      * @return array<int,string>
      */
     public function getPresentationRuleIdentifiers(): array;
-
-
-    /**
-     * Returns the configured response contract identifiers.
-     *
-     * @return array<int,string> Contract identifiers.
-     */
-    public function getContracts(): array;
 
 
     /**
