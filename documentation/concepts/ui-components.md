@@ -17,6 +17,11 @@ parses complete JSON markers and creates stable instance identifiers when no
 `id` is given. Unknown or malformed markers must not create frontend
 components.
 
+The structural `container` component is an exception to the self-contained
+component rule. Emit it before grouped content; a new container closes the
+previous one and the final response closes the last open container. The model
+must not emit a separate closing component.
+
 ## Definitions
 
 A `Definition` contains:
@@ -28,20 +33,21 @@ A `Definition` contains:
 - configured actions and prompt templates;
 - an optional wrapper CSS class.
 
-Definitions may also use the `customElement` render mode. In that mode the
-frontend definition supplies a registered custom-element tag through
-`elementName`; the configured template becomes the element's light-DOM
-children. Existing `block` and `inline` definitions are unchanged.
+Definitions can supply an outer tag through `tagName`. With `renderMode: block`
+the element is rendered as a block; with `renderMode: inline` it remains inside
+the current Markdown fragment. The configured template becomes the element's
+light-DOM children. The `container` render mode creates the wrapper around the
+rendered content automatically.
 
 Example definition:
 
 ```text
-renderMode: customElement
-elementName: mv-card-slider
+renderMode: block
+tagName: custom-card-slider
 template: <div data-label="{{label}}">{{text}}</div>
 ```
 
-The host frontend must register `mv-card-slider` before or while the response
+The host frontend must register `custom-card-slider` before or while the response
 is inserted. A normal Vue component is not compiled when it is inserted via
 `v-html`; use a Vue custom element adapter when the component needs Vue
 lifecycle or interactivity.
@@ -77,5 +83,5 @@ Built-in definitions live under:
 Assistant/Presentation/UIComponents/Defaults/
 ```
 
-The catalog currently includes `select-list`, `link-list`, `link`, `buttons`,
-`progress-indicator` and `decorative`.
+The catalog currently includes `container`, `select-list`, `link-list`, `link`,
+`buttons`, `progress-indicator`, `decorative` and `headline`.

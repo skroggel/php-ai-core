@@ -45,11 +45,14 @@ final class Headline
     {
         return new Definition(
             'headline',
-            'Displays a short semantic section headline. Supply variable content only through its declared data fields. Provide the heading text in the declared data-field `text`',
-            '<h2>{{text}}</h2>',
+            'Displays a short semantic section headline. Supply the heading text in `text` and optionally choose a semantic heading level in `type` (`h1` to `h6`). The default heading level is `h2`.',
+            '<{{type}}>{{text}}</{{type}}>',
             [],
-            ['text' => ['type' => 'string']],
-            ['text'],
+            [
+                'text' => ['type' => 'string'],
+                'type' => ['type' => 'string', 'default' => 'h2'],
+            ],
+            ['text', 'type'],
             'ai-ui-headline',
         );
     }

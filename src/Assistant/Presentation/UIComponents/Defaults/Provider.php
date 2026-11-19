@@ -45,6 +45,7 @@ final class Provider
     public function get(string $identifier): ?Definition
     {
         return match (trim($identifier)) {
+            'container' => Container::definition(),
             'select-list' => SelectList::definition(),
             'link-list' => LinkList::definition(),
             'link' => Link::definition(),
@@ -65,7 +66,7 @@ final class Provider
     {
         return array_values(array_filter(array_map(
             fn (string $identifier): ?Definition => $this->get($identifier),
-            ['select-list', 'link-list', 'link', 'buttons', 'progress-indicator', 'decorative', 'headline'],
+            ['container', 'select-list', 'link-list', 'link', 'buttons', 'progress-indicator', 'decorative', 'headline'],
         )));
     }
 }

@@ -52,6 +52,7 @@ final class DefaultsProviderTest extends TestCase
         );
 
         self::assertSame([
+            'container',
             'select-list',
             'link-list',
             'link',
@@ -60,6 +61,19 @@ final class DefaultsProviderTest extends TestCase
             'decorative',
             'headline',
         ], $identifiers);
+    }
+
+    /**
+     * Tests the structural container definition.
+     *
+     * @return void
+     */
+    public function testProvidesContainerDefinition(): void
+    {
+        $definition = (new Provider())->get('container');
+
+        self::assertSame('container', $definition->renderMode);
+        self::assertSame(['class' => ['type' => 'string']], $definition->dataSchema);
     }
 
     /**
@@ -92,6 +106,20 @@ final class DefaultsProviderTest extends TestCase
         self::assertSame('ai-ui-progress-indicator', $provider->get('progress-indicator')->cssClass);
         self::assertSame('ai-ui-decorative', $provider->get('decorative')->cssClass);
         self::assertSame('ai-ui-headline', $provider->get('headline')->cssClass);
+    }
+
+    /**
+     * Tests the semantic headline level configuration.
+     *
+     * @return void
+     */
+    public function testProvidesHeadlineTypeWithH2Default(): void
+    {
+        $definition = (new Provider())->get('headline');
+
+        self::assertSame('<{{type}}>{{text}}</{{type}}>', $definition->template);
+        self::assertSame(['type' => 'string', 'default' => 'h2'], $definition->dataSchema['type']);
+        self::assertContains('type', $definition->placeholders);
     }
 
     /**
